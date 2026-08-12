@@ -1,0 +1,244 @@
+import { Link } from 'react-router-dom';
+import {
+  AlertTriangle,
+  Baby,
+  MapPinned,
+  Package,
+  ShieldAlert,
+} from 'lucide-react';
+import Navbar from '../components/layout/Navbar';
+import MetricCard from '../components/cards/MetricCard';
+import StaffServiceCard from '../components/cards/StaffServiceCard';
+import AlertCard from '../components/cards/AlertCard';
+import ForecastChart from '../components/charts/ForecastChart';
+import ResourceChart from '../components/charts/ResourceChart';
+import SriLankaMap from '../components/maps/SriLankaMap';
+import ExportToolbar from '../components/export/ExportToolbar';
+import {
+  dashboardMetrics,
+  forecastSummary,
+  programmePerformance,
+  topDistricts,
+  triposhaDemand,
+} from '../data/dashboardData';
+import { useApp } from '../context/AppContext';
+import { districts } from '../data/districtData';
+
+export default function Dashboard() {
+  const { alerts } = useApp();
+
+  const pdfSections = [
+    {
+      heading: 'Dashboard Summary',
+      lines: [
+        `Total Districts: ${dashboardMetrics.totalDistricts}`,
+        `High Risk Districts: ${dashboardMetrics.highRiskDistricts}`,
+        `Predicted Cases: ${dashboardMetrics.predictedCases}`,
+        `Triposha Requirement: ${dashboardMetrics.triposhaRequirement}`,
+        `Early Warning Alerts: ${dashboardMetrics.earlyWarningAlerts}`,
+      ],
+    },
+    {
+      heading: 'Top Districts',
+      lines: topDistricts.map((d) => `${d.rank}. ${d.district} — ${d.cases} (${d.risk})`),
+    },
+  ];
+
+  return (
+    <div className="min-h-screen">
+      <Navbar
+        title="Dashboard"
+        subtitle="AI-Powered Childhood Nutrition Intelligence"
+      />
+
+      <div className="space-y-5 p-4 md:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-slate-500">
+            Data refreshed: {dashboardMetrics.dataRefreshed} · Model: {dashboardMetrics.modelVersion} ·
+            Simulated research dataset.
+          </p>
+          <ExportToolbar
+            pdfSections={pdfSections}
+            excelSheets={{
+              'District Data': districts,
+              'Top Districts': topDistricts,
+              Alerts: alerts,
+            }}
+            csvRows={topDistricts}
+            pdfName="FedNutri-Dashboard.pdf"
+            excelName="FedNutri-Dashboard.xlsx"
+            csvName="FedNutri-TopDistricts.csv"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <MetricCard
+            title="Total Districts"
+            value={dashboardMetrics.totalDistricts}
+            subtitle="Nationwide coverage"
+            icon={MapPinned}
+            accent="#3498DB"
+          />
+          <MetricCard
+            title="High Risk Districts"
+            value={dashboardMetrics.highRiskDistricts}
+            subtitle="Immediate attention"
+            icon={AlertTriangle}
+            accent="#E74C3C"
+          />
+          <MetricCard
+            title="Predicted Cases"
+            value={dashboardMetrics.predictedCases.toLocaleString()}
+            subtitle="Children · 2025"
+            icon={Baby}
+            accent="#6C5CE7"
+            trend={dashboardMetrics.predictedCasesChange}
+          />
+          <MetricCard
+            title="Triposha Requirement"
+            value={dashboardMetrics.triposhaRequirement.toLocaleString()}
+            subtitle="Packs this quarter"
+            icon={Package}
+            accent="#F39C12"
+          />
+          <MetricCard
+            title="Early Warning Alerts"
+            value={dashboardMetrics.earlyWarningAlerts}
+            subtitle="Active alerts"
+            icon={ShieldAlert}
+            accent="#3498DB"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm xl:col-span-3">
+            <div className="mb-3 flex items-start justify-between">
+              <div>
+                <h3 className="font-bold text-primary">Sri Lanka Malnutrition Risk Map</h3>
+                <p className="text-xs text-slate-500">District markers coloured by risk class</p>
+              </div>
+              <Link to="/gis-map" className="text-xs font-semibold text-secondary hover:underline">
+                Open full map
+              </Link>
+            </div>
+            <div className="relative h-[360px]">
+              <SriLankaMap height="360px" />
+              <div className="absolute bottom-3 left-3 z-[400] rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs shadow">
+                <p className="mb-1 font-semibold text-primary">Risk Legend</p>
+                <div className="space-y-1">
+                  <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-danger" /> High Risk</p>
+                  <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-warning" /> Medium Risk</p>
+                  <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Low Risk</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="xl:col-span-2">
+            <StaffServiceCard />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm xl:col-span-3">
+            <div className="mb-2 flex items-start justify-between">
+              <div>
+                <h3 className="font-bold text-primary">Malnutrition Cases — Historical & Forecast</h3>
+                <p className="text-xs text-slate-500">Historical 2019–2023 · Predicted 2024–2027</p>
+              </div>
+              <Link to="/forecast" className="text-xs font-semibold text-secondary hover:underline">
+                Forecast studio
+              </Link>
+            </div>
+            <ForecastChart data={forecastSummary} height={300} />
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm xl:col-span-2">
+            <h3 className="font-bold text-primary">Triposha Demand</h3>
+            <p className="mb-2 text-xs text-slate-500">Distribution by risk zone</p>
+            <ResourceChart
+              data={triposhaDemand}
+              centerLabel="Total"
+              centerValue="45,200 Packs"
+              height={230}
+            />
+            <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs">
+              {triposhaDemand.map((d) => (
+                <span key={d.name} className="flex items-center gap-1.5 text-slate-600">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
+                  {d.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <h3 className="mb-1 font-bold text-primary">Top 5 Districts by Predicted Cases</h3>
+            <p className="mb-4 text-xs text-slate-500">Highest pressure districts this cycle</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left text-[10px] uppercase tracking-wide text-slate-400">
+                    <th className="pb-2">Rank</th>
+                    <th className="pb-2">District</th>
+                    <th className="pb-2">Cases</th>
+                    <th className="pb-2">Risk</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topDistricts.map((d) => (
+                    <tr key={d.district} className="border-b border-slate-50">
+                      <td className="py-2.5 font-semibold text-slate-500">{d.rank}</td>
+                      <td className="py-2.5 font-medium text-primary">{d.district}</td>
+                      <td className="py-2.5">{d.cases}</td>
+                      <td className="py-2.5">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            d.risk === 'High'
+                              ? 'bg-danger/10 text-danger'
+                              : 'bg-warning/10 text-warning'
+                          }`}
+                        >
+                          {d.risk}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <AlertCard alerts={alerts} />
+
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <h3 className="mb-1 font-bold text-primary">Programme Performance</h3>
+            <p className="mb-4 text-xs text-slate-500">Key national indicators</p>
+            <div className="space-y-4">
+              {programmePerformance.map((p) => (
+                <div key={p.name}>
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="font-medium text-primary">{p.name}</span>
+                    <span className="text-slate-500">
+                      {p.value}% <span className="text-slate-400">/ target {p.target}%</span>
+                    </span>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-success"
+                      style={{ width: `${p.value}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 rounded-xl bg-secondary/10 px-3 py-2.5 text-xs text-primary">
+              Projected national caseload for 2025 is 8,426 children (+3.1%). Prioritise High Risk
+              districts for Triposha and clinic outreach.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
