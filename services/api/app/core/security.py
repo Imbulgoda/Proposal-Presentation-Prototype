@@ -113,6 +113,7 @@ PERMISSIONS: dict[UserRole, set[str]] = {
     },
     UserRole.DOCTOR: {
         "child:read",
+        "child:write",
         "visit:read",
         "visit:write",
         "predict:run",

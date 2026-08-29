@@ -24,22 +24,23 @@ LATENCY = Histogram("cnip_http_request_seconds", "HTTP latency", ["method", "pat
 
 app = FastAPI(
     title=product["name"],
-    description=(
-        f"{product['subtitle']}. {product['disclaimer']} "
-        f"{product['researchDisclaimer']}"
-    ),
+    description=f"{product['subtitle']}. {product['disclaimer']}",
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[settings.frontend_url, "http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_cors_kwargs: dict = {
+    "allow_origins": settings.cors_origins,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+if settings.is_dev:
+    # Local Next.js often runs on alternate ports (3001, 3002, …) when 3000 is taken.
+    _cors_kwargs["allow_origin_regex"] = r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
+
+app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
 
 @app.middleware("http")

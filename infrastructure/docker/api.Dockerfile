@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -12,7 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY services/api/requirements.txt /tmp/requirements.txt
 COPY workers/alerts/requirements.txt /tmp/worker-requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt -r /tmp/worker-requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r /tmp/requirements.txt -r /tmp/worker-requirements.txt
 
 COPY services/api /app
 COPY workers /app/workers

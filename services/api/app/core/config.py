@@ -7,7 +7,17 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-ROOT = Path(__file__).resolve().parents[4]
+def _repo_root() -> Path:
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "packages" / "contracts").is_dir() or (parent / "docker-compose.yml").is_file():
+            return parent
+    if Path("/contracts").exists():
+        return Path("/app")
+    return here.parents[min(4, len(here.parents) - 1)]
+
+
+ROOT = _repo_root()
 CONTRACTS = Path("/contracts") if Path("/contracts").exists() else ROOT / "packages" / "contracts"
 
 
@@ -17,6 +27,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     app_name: str = "Child Nutrition Intelligence Platform"
     frontend_url: str = "http://localhost:3000"
+    cors_extra_origins: str = ""
     api_url: str = "http://localhost:8000"
     inference_url: str = "http://localhost:8001"
 
@@ -49,7 +60,12 @@ class Settings(BaseSettings):
     c2_explainability_url: str = ""
     c3_counterfactual_url: str = ""
     c4_drift_url: str = ""
+    c2_integration_token: str = ""
+    c3_integration_token: str = ""
+    c4_integration_token: str = ""
     integration_mode: str = "mock"
+    integration_timeout_seconds: float = 8.0
+    integration_max_retries: int = 5
 
     log_level: str = "INFO"
     log_json: bool = True
@@ -70,6 +86,20 @@ class Settings(BaseSettings):
     @property
     def is_dev(self) -> bool:
         return self.app_env in {"development", "dev", "test"}
+
+    @property
+    def cors_origins(self) -> list[str]:
+        extras = [origin.strip() for origin in self.cors_extra_origins.split(",") if origin.strip()]
+        return list(
+            dict.fromkeys(
+                [
+                    self.frontend_url,
+                    "http://localhost:3000",
+                    "http://127.0.0.1:3000",
+                    *extras,
+                ]
+            )
+        )
 
 
 @lru_cache

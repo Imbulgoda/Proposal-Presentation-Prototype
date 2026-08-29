@@ -17,7 +17,7 @@ Product name lives in `packages/contracts/product.json`.
 
 | Service | Role |
 |---|---|
-| `apps/web` | Next.js clinical / research UI |
+| `client` | Next.js clinical / research UI (React) |
 | `services/api` | FastAPI domain API, auth, RBAC, audit |
 | `services/inference` | Model adapters (demo / sklearn / pytorch / onnx) |
 | `workers/alerts` | Celery beat + worker for missed follow-ups |
@@ -25,6 +25,7 @@ Product name lives in `packages/contracts/product.json`.
 | PostgreSQL + Redis | Persistence and queue |
 
 See `docs/ARCHITECTURE.md` for data flow.
+See `docs/COMPONENT1_CONTEXT.md` for authoritative Component 1 research, clinical UX, and component-boundary specification (J26-IT-399).
 
 ---
 
@@ -48,22 +49,90 @@ docker compose up --build
 
 First boot runs `alembic upgrade head` and seeds demonstration data.
 
+### Viva / frontend prototype
+
+For panel demonstrations of the **React UI** only:
+
+```powershell
+npm run dev:ui
+```
+
+This starts the Next.js client at http://localhost:3000. For live data, run the API in a second terminal: `npm run dev:backend`.
+
+### Local web dev (without rebuilding Docker web)
+
+Fastest option on Windows — backend in Docker, **React/Next.js** frontend with hot reload:
+
+```powershell
+.\scripts\dev-local.ps1
+```
+
+Or from the **repository root**:
+
+```bash
+npm run dev:fast
+```
+
+This starts `postgres`, `redis`, `api`, and `inference` in Docker, then runs the React UI via `next dev` (no 1 GB Docker web rebuild).
+
+For frontend only (API already running):
+
+```bash
+npm run dev
+```
+
+Or from `client` directly. The React/Next.js app lives in `client/` — root `package.json` scripts delegate there.
+
+API and database should still be running via Docker:
+
+```bash
+docker compose up -d postgres redis api inference
+```
+
+### Docker build performance
+
+Docker builds exclude local `node_modules` and `.next` folders. The web image uses a scoped `client/` build context.
+
+### Troubleshooting (Windows)
+
+**`container name already in use` (cnip-redis, etc.)**  
+Old containers from a previous folder (e.g. Downloads) conflict with this project. Fix:
+
+```powershell
+npm run dev:cleanup
+npm run dev:backend
+```
+
+**`EADDRINUSE` on port 3000**  
+A previous Next.js dev server is still running. Fix:
+
+```powershell
+npm run dev:cleanup
+npm run dev:fast
+```
+
+Or if the backend is already healthy (`http://localhost:8000/health` returns ok), just run:
+
+```powershell
+npm run dev
+```
+
 ---
 
 ## Demo accounts (development only)
 
-Password for all seed users: `DemoPass123!`
+Password for all seed users: `Doc123`
 
-| Role | Email |
-|---|---|
-| System administrator | admin@demo.local |
-| Facility administrator | clinic-admin@demo.local |
-| Doctor | doctor@demo.local |
-| PHM / health worker | phm@demo.local |
-| Nutritionist | nutritionist@demo.local |
-| Researcher | researcher@demo.local |
+| Role | Email | Facility |
+|---|---|---|
+| Doctor (Colombo) | doctor@demo.local | MOH Colombo Demo |
+| Doctor (Kandy) | doctor.kandy@demo.local | MOH Kandy Demo |
+
+Only doctor accounts can sign in. Non-doctor seed roles are not created in new installs.
 
 Never use these passwords in production.
+
+The seed includes **25 synthetic demonstration children** across Colombo, Kandy, and Galle facilities.
 
 Canonical demonstration child: **C-1042** (risk 82% → 61% → 59%, stagnating).
 
@@ -102,8 +171,11 @@ cd services/api && pytest -q
 cd ../.. && PYTHONPATH=. pytest -q ml/tests
 
 # Frontend
-cd apps/web && npm test && npm run build
+npm run test
+npm run build
 ```
+
+(`npm run dev`, `npm test`, etc. work from the repository root and delegate to `client/`.)
 
 ---
 

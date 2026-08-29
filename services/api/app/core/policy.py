@@ -60,3 +60,10 @@ def load_label_schema() -> dict:
 def load_feature_sets() -> dict:
     path = get_settings().contracts_dir / "feature_sets.yaml"
     return yaml.safe_load(path.read_text())
+
+
+def load_registration_config() -> dict:
+    import json
+
+    path = get_settings().contracts_dir / "registration_config.json"
+    return json.loads(path.read_text())

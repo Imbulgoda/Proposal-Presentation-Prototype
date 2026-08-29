@@ -10,6 +10,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.demo_outcomes import demo_confidence, get_demo_outcome
+
 CONTRACTS = Path("/contracts") if Path("/contracts").exists() else Path(__file__).resolve().parents[3] / "packages" / "contracts"
 
 
@@ -48,28 +50,16 @@ class PredictionResult(BaseModel):
     feature_schema_version: str
     inference_ms: float
     mode: str
-
-
-DEMO_LOOKUP = {
-    ("C-1042", 0): ("wasting", "severe", 0.82),
-    ("C-1042", 1): ("wasting", "moderate", 0.61),
-    ("C-1042", 2): ("wasting", "moderate", 0.59),
-    ("C-1001", 0): ("underweight", "moderate", 0.74),
-    ("C-1001", 1): ("underweight", "mild", 0.58),
-    ("C-1001", 2): ("normal", "none", 0.41),
-    ("C-1001", 3): ("normal", "none", 0.28),
-    ("C-1002", 0): ("stunting", "mild", 0.38),
-    ("C-1002", 1): ("stunting", "moderate", 0.47),
-    ("C-1002", 2): ("stunting", "moderate", 0.62),
-    ("C-1002", 3): ("wasting", "moderate", 0.71),
-    ("C-1005", 0): ("wasting", "severe", 0.78),
-    ("C-1005", 1): ("wasting", "moderate", 0.49),
-    ("C-1005", 2): ("underweight", "mild", 0.33),
-    ("C-1005", 3): ("wasting", "moderate", 0.58),
-}
+    score_kind: str = "demo_progression_score"
+    score_is_probability: bool = False
+    score_is_calibrated: bool = False
+    prediction_task: str = "current_status_demo"
+    clinical_use: bool = False
+    data_limitations: list[str] = Field(default_factory=list)
 
 
 def _embedding(pid: str, visit_number: int, risk: float, dim: int) -> list[float]:
+    """Deterministic demo embedding. visit_number must be DB 1-based."""
     seed = sum(ord(c) for c in pid) + visit_number * 17
     return [round(((seed * (i + 3)) % 1000) / 1000.0 - 0.5 + (1 - risk) * 0.2, 4) for i in range(dim)]
 
@@ -82,21 +72,29 @@ def _temperature_scale(prob: float, temperature: float = 1.2) -> float:
     return float(np.clip(calibrated, 0.01, 0.99))
 
 
+def _tri_state_contribution(value, *, true_delta: float, false_delta: float = 0.0) -> tuple[float, bool]:
+    """Return (contribution, was_unknown). Unknown/None is excluded — never treated as False."""
+    if value is True:
+        return true_delta, False
+    if value is False:
+        return false_delta, False
+    return 0.0, True
+
+
 class DemoModelAdapter:
     name = "MCA-2026-001"
 
     def predict(self, req: PredictRequest) -> PredictionResult:
         t0 = time.perf_counter()
-        key = (req.child_pseudonymous_id, req.visit_number)
-        if key in DEMO_LOOKUP:
-            status, severity, risk = DEMO_LOOKUP[key]
-        else:
-            status, severity, risk = self._from_measurements(req)
-        raw_risk = min(0.99, risk + 0.03)
-        calibrated = _temperature_scale(risk)
-        # Keep seeded demo risks exact so the C-1042 narrative is reproducible.
-        if key in DEMO_LOOKUP:
+        limitations: list[str] = []
+        canonical = get_demo_outcome(req.child_pseudonymous_id, req.visit_number)
+        if canonical is not None:
+            status, severity, risk = canonical
             calibrated = risk
+        else:
+            status, severity, risk, limitations = self._from_measurements(req)
+            calibrated = _temperature_scale(risk)
+        raw_risk = min(0.99, risk + 0.03)
         status_probs = {k: 0.08 for k in ("normal", "stunting", "wasting", "underweight")}
         status_probs[status] = max(0.55, calibrated)
         total = sum(status_probs.values())
@@ -108,40 +106,78 @@ class DemoModelAdapter:
             severity=severity,
             raw_probabilities={"status": status_probs, "risk": raw_risk},
             calibrated_probabilities={"status": status_probs, "risk": calibrated},
-            risk_score=round(calibrated, 4),
-            confidence="moderate",
-            latent_embedding=_embedding(req.child_pseudonymous_id, req.visit_number, calibrated, dim),
+            risk_score=round(float(calibrated), 4),
+            confidence=demo_confidence(),
+            latent_embedding=_embedding(req.child_pseudonymous_id, req.visit_number, float(calibrated), dim),
             model_version=self.name,
             calibration_version="demo-temp-v1",
             feature_schema_version="fs-2026-001",
             inference_ms=round(elapsed, 2),
             mode="DEMO",
+            score_kind="demo_progression_score",
+            score_is_probability=False,
+            score_is_calibrated=False,
+            prediction_task="current_status_demo",
+            clinical_use=False,
+            data_limitations=limitations,
         )
 
-    def _from_measurements(self, req: PredictRequest) -> tuple[str, str, float]:
+    def _from_measurements(self, req: PredictRequest) -> tuple[str, str, float, list[str]]:
         anthro = req.anthropometric
         diet = req.dietary
         mch = req.maternal_child_health
-        weight = float(anthro.get("weight_kg") or 8)
-        height = float(anthro.get("height_cm") or 70)
-        muac = float(anthro.get("muac_cm") or 12)
-        diversity = int(diet.get("dietary_diversity_score") or 3)
-        diarrhoea = 1 if mch.get("recent_diarrhoea") else 0
-        # Deterministic synthetic scoring — not a clinical rule.
+        weight = anthro.get("weight_kg")
+        height = anthro.get("height_cm")
+        muac = anthro.get("muac_cm")
+        if weight is None or height is None:
+            raise ValueError("Anthropometric weight and height are required for assessment")
+        weight = float(weight)
+        height = float(height)
+        muac = float(muac) if muac is not None else None
+        diversity_raw = diet.get("dietary_diversity_score")
+        diversity = int(diversity_raw) if diversity_raw is not None else None
+        limitations: list[str] = []
+        diarrhoea_delta, diarrhoea_unknown = _tri_state_contribution(
+            mch.get("recent_diarrhoea"), true_delta=0.08, false_delta=0.0
+        )
+        if diarrhoea_unknown:
+            limitations.append("recent_diarrhoea_unknown")
+        resp_delta, resp_unknown = _tri_state_contribution(
+            mch.get("recent_respiratory_illness"), true_delta=0.04, false_delta=0.0
+        )
+        if resp_unknown:
+            limitations.append("recent_respiratory_illness_unknown")
+        hosp_delta, hosp_unknown = _tri_state_contribution(
+            mch.get("recent_hospitalization"), true_delta=0.05, false_delta=0.0
+        )
+        if hosp_unknown:
+            limitations.append("recent_hospitalization_unknown")
         bmi_like = weight / ((height / 100) ** 2) if height else 14
-        digest = hashlib.sha256(f"{req.child_pseudonymous_id}:{req.visit_number}:{weight}:{height}:{muac}".encode()).hexdigest()
+        digest = hashlib.sha256(
+            f"{req.child_pseudonymous_id}:{req.visit_number}:{weight}:{height}:{muac}".encode()
+        ).hexdigest()
         noise = int(digest[:4], 16) / 65535 * 0.04
-        risk = 0.15 + max(0, (16 - bmi_like) * 0.06) + max(0, (12.5 - muac) * 0.05) + (4 - diversity) * 0.03 + diarrhoea * 0.08 + noise
+        risk = 0.15 + max(0, (16 - bmi_like) * 0.06)
+        if muac is not None:
+            risk += max(0, (12.5 - muac) * 0.05)
+        else:
+            limitations.append("muac_unknown")
+        if diversity is not None:
+            risk += (4 - diversity) * 0.03
+        else:
+            limitations.append("dietary_diversity_unknown")
+        # Unknown flags contribute 0 (excluded), distinct from False which also adds 0 but is recorded as known-negative.
+        risk += diarrhoea_delta + resp_delta + hosp_delta + noise
         risk = float(np.clip(risk, 0.08, 0.92))
         if risk >= 0.75:
-            return "wasting", "severe", risk
+            return "wasting", "severe", risk, limitations
         if risk >= 0.55:
-            return "wasting", "moderate", risk
+            return "wasting", "moderate", risk, limitations
         if risk >= 0.4:
-            return "underweight", "mild", risk
+            return "underweight", "mild", risk, limitations
         if risk >= 0.28:
-            return "stunting", "mild", risk
-        return "normal", "none", risk
+            return "stunting", "mild", risk, limitations
+        return "normal", "none", risk, limitations
 
 
 class SklearnModelAdapter:

@@ -22,6 +22,13 @@ class Child(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     status: Mapped[EntityStatus] = mapped_column(str_enum(EntityStatus, "child_status"), default=EntityStatus.ACTIVE)
     responsible_team: Mapped[str | None] = mapped_column(String(120))
     registered_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    full_name_encrypted: Mapped[str | None] = mapped_column(String(512))
+    district: Mapped[str | None] = mapped_column(String(120))
+    moh_area: Mapped[str | None] = mapped_column(String(120))
+    phm_area: Mapped[str | None] = mapped_column(String(120))
+    assigned_doctor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    external_patient_id_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    study_serial_number: Mapped[str | None] = mapped_column(String(40), index=True)
 
     visits: Mapped[list[Visit]] = relationship(back_populates="child", order_by="Visit.visit_number")
     caregiver: Mapped[Caregiver | None] = relationship(back_populates="child", uselist=False)
@@ -36,6 +43,7 @@ class Caregiver(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     kinship: Mapped[str] = mapped_column(String(40), default="mother")
     display_name: Mapped[str | None] = mapped_column(String(200))
     phone_encrypted: Mapped[str | None] = mapped_column(String(512))
+    reminder_consent: Mapped[bool] = mapped_column(Boolean, default=False)
 
     child: Mapped[Child] = relationship(back_populates="caregiver")
 
@@ -61,6 +69,7 @@ class Visit(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     socioeconomic: Mapped[SocioeconomicRecord | None] = relationship(back_populates="visit", uselist=False)
     dietary: Mapped[DietaryRecord | None] = relationship(back_populates="visit", uselist=False)
     maternal_child_health: Mapped[MaternalChildHealthRecord | None] = relationship(back_populates="visit", uselist=False)
+    context_snapshot: Mapped["VisitContextSnapshot | None"] = relationship(back_populates="visit", uselist=False)
     predictions: Mapped[list["Prediction"]] = relationship(back_populates="visit")
 
 
@@ -93,6 +102,9 @@ class SocioeconomicRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     geographical_area: Mapped[str | None] = mapped_column(String(80))
     drinking_water: Mapped[str | None] = mapped_column(String(80))
     sanitation: Mapped[str | None] = mapped_column(String(80))
+    maternal_age_years: Mapped[int | None] = mapped_column(Integer)
+    income_category: Mapped[str | None] = mapped_column(String(40))
+    remarks: Mapped[str | None] = mapped_column(Text)
     carried_forward: Mapped[bool] = mapped_column(Boolean, default=False)
 
     visit: Mapped[Visit] = relationship(back_populates="socioeconomic")
@@ -109,6 +121,10 @@ class DietaryRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     meal_frequency: Mapped[int | None] = mapped_column(Integer)
     food_groups: Mapped[list | None] = mapped_column(JSON)
     micronutrient_supplementation: Mapped[bool | None] = mapped_column(Boolean)
+    exclusive_breastfeeding: Mapped[bool | None] = mapped_column(Boolean)
+    dietary_diversity_category: Mapped[str | None] = mapped_column(String(20))
+    triposha_received: Mapped[bool | None] = mapped_column(Boolean)
+    remarks: Mapped[str | None] = mapped_column(Text)
 
     visit: Mapped[Visit] = relationship(back_populates="dietary")
 
@@ -127,3 +143,21 @@ class MaternalChildHealthRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     birth_characteristics: Mapped[str | None] = mapped_column(Text)
 
     visit: Mapped[Visit] = relationship(back_populates="maternal_child_health")
+
+
+class VisitContextSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """External macro / food-price / disaster context linked to visit date (not child-level progression)."""
+
+    __tablename__ = "visit_context_snapshots"
+
+    visit_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("visits.id"), unique=True, nullable=False)
+    visit_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    economic_growth_rate_pct: Mapped[float | None] = mapped_column(Float)
+    food_price_inflation_pct: Mapped[float | None] = mapped_column(Float)
+    food_price_index: Mapped[float | None] = mapped_column(Float)
+    economy_stress_level: Mapped[str | None] = mapped_column(String(40))
+    events: Mapped[list | None] = mapped_column(JSON)
+    schema_version: Mapped[str | None] = mapped_column(String(40))
+    source_note: Mapped[str | None] = mapped_column(Text)
+
+    visit: Mapped[Visit] = relationship(back_populates="context_snapshot")

@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cnip_dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-cnip}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -46,6 +46,7 @@ services:
     volumes:
       - ./packages/contracts:/contracts:ro
       - ./ml:/ml:ro
+      - ./services/api:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -108,8 +109,10 @@ services:
 
   web:
     build:
-      context: .
-      dockerfile: infrastructure/docker/web.Dockerfile
+      context: client
+      dockerfile: ../../infrastructure/docker/web.Dockerfile
+      additional_contexts:
+        contracts: packages/contracts
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8000
         NEXT_PUBLIC_APP_URL: http://localhost:3000

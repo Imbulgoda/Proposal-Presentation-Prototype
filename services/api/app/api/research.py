@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.deps import require_permission
 from app.core.policy import load_feature_sets, load_label_schema, load_product
+from app.integrations.common.enqueue import enqueue_c4_model_activated
+from app.integrations.common.outbox import kick_delivery_best_effort, pop_scheduled_delivery_ids
 from app.models.enums import AuditAction, ModelStatus
 from app.models.intelligence import ExperimentRun, ModelVersion
 from app.services.audit import write_audit
@@ -25,14 +27,14 @@ def model_comparison(current=Depends(require_permission("research:read"))):
             "status": "empty",
             "message": "No experimental result available",
             "models": [],
-            "disclaimer": load_product()["researchDisclaimer"],
-            "context": "Research Evaluation — not a clinical patient workflow",
+            "disclaimer": load_product()["disclaimer"],
+            "context": "Model performance metrics for registered inference versions.",
         }
     import json
 
     data = json.loads(report.read_text())
-    data["disclaimer"] = load_product()["researchDisclaimer"]
-    data["context"] = "Research Evaluation — not a clinical patient workflow"
+    data["disclaimer"] = load_product()["disclaimer"]
+    data["context"] = "Model performance metrics for registered inference versions."
     return data
 
 
@@ -78,8 +80,6 @@ def dataset_profile(db: Session = Depends(get_db), current=Depends(require_permi
     for p in preds:
         dist[p.status_prediction] = dist.get(p.status_prediction, 0) + 1
     return {
-        "synthetic": True,
-        "label": "Synthetic Demonstration Data",
         "children": children,
         "visits": visits,
         "predictions": len(preds),
@@ -87,7 +87,7 @@ def dataset_profile(db: Session = Depends(get_db), current=Depends(require_permi
         "modalities": ["anthropometric", "socioeconomic", "dietary", "maternal_child_health"],
         "feature_sets": load_feature_sets()["feature_sets"].keys(),
         "label_schema": load_label_schema(),
-        "disclaimer": load_product()["researchDisclaimer"],
+        "disclaimer": load_product()["disclaimer"],
     }
 
 
@@ -121,11 +121,14 @@ def list_models(db: Session = Depends(get_db), current=Depends(require_permissio
             "version": r.version,
             "architecture": r.architecture,
             "status": r.status.value,
+            "feature_schema_version": r.feature_schema_version,
+            "label_schema_version": r.label_schema_version,
             "embedding_dimension": r.embedding_dimension,
             "embedding_space_id": r.embedding_space_id,
             "is_demo": r.is_demo,
             "activated_at": r.activated_at.isoformat() if r.activated_at else None,
             "evaluation_metrics": r.evaluation_metrics,
+            "notes": r.notes,
         }
         for r in rows
     ]
@@ -168,4 +171,6 @@ def activate_model(model_id: UUID, request=None, db: Session = Depends(get_db), 
         role=current.role.value,
         metadata={"model": f"{row.model_key}-{row.version}", "not_clinically_validated": True},
     )
+    enqueue_c4_model_activated(db, model=row, user_id=current.id)
+    kick_delivery_best_effort(pop_scheduled_delivery_ids(db))
     return {"ok": True, "status": row.status.value}

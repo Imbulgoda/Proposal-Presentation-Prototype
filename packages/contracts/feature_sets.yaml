@@ -16,6 +16,7 @@ feature_sets:
       - socioeconomic
       - dietary
       - maternal_child_health
+      - external_context
     forbidden_features:
       - child_name
       - caregiver_name
@@ -36,6 +37,7 @@ feature_sets:
       - socioeconomic
       - dietary
       - maternal_child_health
+      - external_context
       - prior_visit_summary
     forbidden_features:
       - child_name
@@ -69,19 +71,26 @@ documentation:
     wealth_proxy: Ordinal household wealth proxy. Not a national ID.
     maternal_education: Highest completed education category.
     paternal_education: Highest completed education category.
-    maternal_employment: Employment status category.
-    household_size: Number of household members.
+    maternal_employment: Employment / occupation status category.
+    maternal_age_years: Mother's age in years at visit.
+    income_category: Household income category (low / medium / high).
+    household_size: Number of household members (family member count).
     geographical_area: District/area code, not street address.
     drinking_water: Water source category.
     sanitation: Sanitation facility category.
+    remarks: Optional socioeconomic remarks from clinic record.
   dietary:
     breastfeeding_status: Current breastfeeding category.
-    breastfeeding_duration_months: Duration if known.
+    breastfeeding_duration_months: Exclusive/any breastfeeding duration in months.
+    exclusive_breastfeeding: Whether exclusive breastfeeding is reported (Y/N).
     complementary_feeding: Whether complementary feeding has started.
     dietary_diversity_score: Count of food groups (research instrument).
-    meal_frequency: Meals in previous 24h.
+    dietary_diversity_category: Low / medium / high dietary diversity category.
+    meal_frequency: Meals per day in previous 24h.
     food_groups: Multi-hot encoding of food groups.
-    micronutrient_supplementation: Vitamin/micronutrient flag.
+    micronutrient_supplementation: Vitamin / micronutrient supplements (Y/N).
+    triposha_received: Whether Triposha supplementary food received (Y/N).
+    remarks: Optional dietary remarks from clinic record.
   maternal_child_health:
     maternal_bmi: Maternal BMI if available.
     gestational_age_weeks: Gestational age at birth.
@@ -90,3 +99,10 @@ documentation:
     recent_diarrhoea: Recent diarrhoeal illness.
     recent_respiratory_illness: Recent ARI.
     recent_hospitalization: Recent hospital admission.
+  external_context:
+    visit_year: Calendar year used for macro context linkage.
+    economic_growth_rate_pct: Sri Lanka GDP growth proxy for visit year.
+    food_price_inflation_pct: Annual food price inflation proxy.
+    food_price_index: Indexed food price level (demonstration series).
+    economy_stress_level: Qualitative economy stress band.
+    events: Major disasters / outbreaks linked to visit year (demonstration catalog).

@@ -1,0 +1,26 @@
+{
+  "schema_version": "dataset-map-2026-001",
+  "disclaimer": "Maps approved research dataset column names to prototype visit modality fields.",
+  "fields": [
+    { "dataset": "Child ID", "prototype": "child.pseudonymous_id", "modality": "operational" },
+    { "dataset": "Serial Number", "prototype": "child.study_serial_number", "modality": "operational" },
+    { "dataset": "Child's Age", "prototype": "anthropometric.age_months", "modality": "anthropometric" },
+    { "dataset": "height", "prototype": "anthropometric.height_cm", "modality": "anthropometric" },
+    { "dataset": "weight", "prototype": "anthropometric.weight_kg", "modality": "anthropometric" },
+    { "dataset": "Mother Age", "prototype": "socioeconomic.maternal_age_years", "modality": "socioeconomic" },
+    { "dataset": "Education", "prototype": "socioeconomic.maternal_education", "modality": "socioeconomic" },
+    { "dataset": "Occupation", "prototype": "socioeconomic.maternal_employment", "modality": "socioeconomic" },
+    { "dataset": "Income Category", "prototype": "socioeconomic.income_category", "modality": "socioeconomic" },
+    { "dataset": "Family member count", "prototype": "socioeconomic.household_size", "modality": "socioeconomic" },
+    { "dataset": "Socioeconomic Remarks", "prototype": "socioeconomic.remarks", "modality": "socioeconomic" },
+    { "dataset": "Exclusive BF (Y/N)", "prototype": "dietary.exclusive_breastfeeding", "modality": "dietary" },
+    { "dataset": "BF Duration (Months)", "prototype": "dietary.breastfeeding_duration_months", "modality": "dietary" },
+    { "dataset": "Complementary Feeding (Y/N)", "prototype": "dietary.complementary_feeding", "modality": "dietary" },
+    { "dataset": "Meals/Day", "prototype": "dietary.meal_frequency", "modality": "dietary" },
+    { "dataset": "Dietary Diversity (Low/Med/High)", "prototype": "dietary.dietary_diversity_category", "modality": "dietary" },
+    { "dataset": "Triposha (Y/N)", "prototype": "dietary.triposha_received", "modality": "dietary" },
+    { "dataset": "Vitamin Supplements (Y/N)", "prototype": "dietary.micronutrient_supplementation", "modality": "dietary" },
+    { "dataset": "Dietary Remarks", "prototype": "dietary.remarks", "modality": "dietary" },
+    { "dataset": "Sri Lanka economy / food prices / disasters (visit-year linked)", "prototype": "external_context.*", "modality": "external_context", "source": "packages/contracts/sri_lanka_context.json" }
+  ]
+}

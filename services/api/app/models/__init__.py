@@ -9,7 +9,7 @@ from app.models.intelligence import (
     ProjectionVersion,
     TrajectoryMetric,
 )
-from app.models.operations import Alert, AuditLog, ClinicalNote, FollowUpSchedule, IntegrationEvent, Notification
+from app.models.operations import Alert, AuditLog, ClinicalNote, ClinicianReview, C3ReassessmentRequest, FollowUpSchedule, IntegrationEvent, Notification
 from app.models.paediatric import (
     AnthropometricRecord,
     Caregiver,
@@ -18,6 +18,7 @@ from app.models.paediatric import (
     MaternalChildHealthRecord,
     SocioeconomicRecord,
     Visit,
+    VisitContextSnapshot,
 )
 
 __all__ = [
@@ -33,6 +34,7 @@ __all__ = [
     "SocioeconomicRecord",
     "DietaryRecord",
     "MaternalChildHealthRecord",
+    "VisitContextSnapshot",
     "ModelVersion",
     "CalibrationVersion",
     "ProjectionVersion",
@@ -44,6 +46,8 @@ __all__ = [
     "Alert",
     "FollowUpSchedule",
     "ClinicalNote",
+    "ClinicianReview",
+    "C3ReassessmentRequest",
     "AuditLog",
     "Notification",
     "IntegrationEvent",

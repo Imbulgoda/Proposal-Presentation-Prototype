@@ -14,6 +14,7 @@ from app.core.security import (
     ACCESS_COOKIE,
     CSRF_COOKIE,
     REFRESH_COOKIE,
+    PERMISSIONS,
     cookie_kwargs,
     create_token,
     decode_token,
@@ -25,7 +26,7 @@ from app.core.security import (
     rotate_refresh_token,
     verify_password,
 )
-from app.models.enums import AuditAction, UserStatus
+from app.models.enums import AuditAction, UserRole, UserStatus
 from app.models.identity import LoginAttempt, RefreshToken, User
 from app.schemas.common import LoginRequest, TokenUserResponse, UserOut
 from app.services.audit import write_audit
@@ -34,6 +35,8 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
 def _user_out(user: User) -> UserOut:
+    role = UserRole(user.role.value if hasattr(user.role, "value") else user.role)
+    perms = sorted(PERMISSIONS.get(role, set()))
     return UserOut(
         id=user.id,
         email=user.email,
@@ -43,6 +46,7 @@ def _user_out(user: User) -> UserOut:
         facility_id=user.facility_id,
         facility_name=user.facility.name if user.facility else None,
         facility_code=user.facility.code if user.facility else None,
+        permissions=perms,
     )
 
 
@@ -72,6 +76,10 @@ def login(body: LoginRequest, request: Request, response: Response, db: Session 
                 user.locked_until = now + timedelta_minutes(settings.lockout_minutes)
         write_audit(db, action=AuditAction.LOGIN_FAILED, resource_type="session", metadata={"email": body.email.lower()}, ip=ip)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+
+    if user.role != UserRole.DOCTOR:
+        write_audit(db, action=AuditAction.LOGIN_FAILED, resource_type="session", metadata={"email": body.email.lower(), "reason": "non_doctor_role"}, ip=ip)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This application is restricted to clinician accounts")
 
     user.failed_login_count = 0
     user.locked_until = None
@@ -110,7 +118,7 @@ def refresh(request: Request, response: Response, db: Session = Depends(get_db),
     if row is None or row.revoked_at is not None or row.expires_at < now:
         raise HTTPException(status_code=401, detail="Refresh token invalid")
     user = db.get(User, row.user_id)
-    if user is None or user.status != UserStatus.ACTIVE:
+    if user is None or user.status != UserStatus.ACTIVE or user.role != UserRole.DOCTOR:
         raise HTTPException(status_code=401, detail="Account unavailable")
     new_raw = new_refresh_raw()
     rotate_refresh_token(db, row, new_raw, settings.refresh_ttl)

@@ -29,6 +29,7 @@ from app.models.paediatric import Child, Visit
 from app.services.alerts import deterioration_alert, event_window_key, relapse_alert, severity_for, stagnation_alert
 from app.services.audit import write_audit
 from app.services.longitudinal import LongitudinalError, classify_progress, elapsed_months
+from app.services.model_display import DEMO_PROJECTION_VERSION
 
 
 def _input_hash(payload: dict) -> str:
@@ -63,6 +64,7 @@ def build_inference_payload(visit: Visit, child: Child) -> dict:
         "socioeconomic": _to_dict(visit.socioeconomic),
         "dietary": _to_dict(visit.dietary),
         "maternal_child_health": _to_dict(visit.maternal_child_health),
+        "external_context": _to_dict(visit.context_snapshot),
     }
 
 
@@ -132,7 +134,7 @@ def run_inference(db: Session, visit: Visit, child: Child, user_id, ip: str | No
             embedding=embedding,
             projection_x=x,
             projection_y=y,
-            projection_version="pca-demo-v1",
+            projection_version=DEMO_PROJECTION_VERSION,
         )
     )
 
@@ -140,17 +142,9 @@ def run_inference(db: Session, visit: Visit, child: Child, user_id, ip: str | No
     visit.model_version_id = model.id
 
     _update_trajectory(db, child, visit, prediction, model)
-    _emit_event(
-        db,
-        IntegrationEventType.PREDICTION_COMPLETED,
-        {
-            "child_id": child.pseudonymous_id,
-            "visit_id": str(visit.id),
-            "model_version": f"{model.model_key}-{model.version}",
-            "risk": prediction.primary_risk_score,
-            "mode": prediction.mode,
-        },
-    )
+    from app.integrations.common.enqueue import enqueue_c4_prediction_observation
+
+    enqueue_c4_prediction_observation(db, child=child, visit=visit, prediction=prediction, model=model)
     write_audit(
         db,
         action=AuditAction.PREDICTION_GENERATED,
@@ -185,7 +179,7 @@ def _update_trajectory(db: Session, child: Child, visit: Visit, prediction: Pred
     predicted = [v for v in visits if v.id != visit.id] + [visit]
     predicted.sort(key=lambda v: v.visit_number)
 
-    is_baseline = visit.visit_number == 0 or len(predicted) == 1
+    is_baseline = visit.visit_number == 1 or len(predicted) == 1
     previous = predicted[-2] if len(predicted) >= 2 else None
     baseline = predicted[0]
     prev_active = _active_prediction(previous) if previous else None
@@ -358,7 +352,14 @@ def _schedule_follow_up(db: Session, child: Child, visit: Visit, policy) -> None
     existing_open = db.scalars(
         select(FollowUpSchedule).where(
             FollowUpSchedule.child_id == child.id,
-            FollowUpSchedule.status.in_([FollowUpStatus.SCHEDULED, FollowUpStatus.OVERDUE, FollowUpStatus.RESCHEDULED]),
+            FollowUpSchedule.status.in_(
+                [
+                    FollowUpStatus.SUGGESTED,
+                    FollowUpStatus.SCHEDULED,
+                    FollowUpStatus.OVERDUE,
+                    FollowUpStatus.RESCHEDULED,
+                ]
+            ),
         )
     ).all()
     for row in existing_open:
@@ -369,22 +370,45 @@ def _schedule_follow_up(db: Session, child: Child, visit: Visit, policy) -> None
             facility_id=child.facility_id,
             expected_date=expected,
             interval_days=policy.default_followup_days,
-            status=FollowUpStatus.SCHEDULED,
+            responsible_user_id=child.assigned_doctor_id,
+            status=FollowUpStatus.SUGGESTED,
+            notes="System-suggested after assessment — confirm or change in clinic workflow.",
         )
     )
 
 
 def _notify_facility(db: Session, child: Child, alert: Alert) -> None:
-    from app.models.identity import User
-    from app.models.enums import UserRole
+    """Route clinical alerts to assigned clinician first; fall back to facility clinical inbox.
 
-    users = db.scalars(
-        select(User).where(
-            User.facility_id == child.facility_id,
-            User.role.in_([UserRole.HEALTH_WORKER, UserRole.DOCTOR, UserRole.NUTRITIONIST, UserRole.FACILITY_ADMIN]),
+    Fallback recipients: facility doctors + facility admins with alert access.
+    Does not notify caregivers. Does not broadcast to every facility user.
+    """
+    from app.models.identity import User
+    from app.models.enums import UserRole, UserStatus
+
+    recipients: list[User] = []
+    if child.assigned_doctor_id:
+        assigned = db.get(User, child.assigned_doctor_id)
+        if assigned and assigned.status == UserStatus.ACTIVE:
+            recipients = [assigned]
+            alert.assigned_to = assigned.id
+
+    if not recipients:
+        recipients = list(
+            db.scalars(
+                select(User).where(
+                    User.facility_id == child.facility_id,
+                    User.status == UserStatus.ACTIVE,
+                    User.role.in_([UserRole.DOCTOR, UserRole.FACILITY_ADMIN]),
+                )
+            ).all()
         )
-    ).all()
-    for user in users:
+        if recipients and alert.assigned_to is None:
+            # Facility clinical inbox fallback — assign to first doctor if present.
+            doctor = next((u for u in recipients if u.role == UserRole.DOCTOR), recipients[0])
+            alert.assigned_to = doctor.id
+
+    for user in recipients:
         db.add(
             Notification(
                 user_id=user.id,
@@ -410,7 +434,7 @@ def evaluate_missed_followups(db: Session) -> int:
     today = date.today()
     due = db.scalars(
         select(FollowUpSchedule).where(
-            FollowUpSchedule.status == FollowUpStatus.SCHEDULED,
+            FollowUpSchedule.status.in_([FollowUpStatus.SCHEDULED, FollowUpStatus.RESCHEDULED]),
             FollowUpSchedule.expected_date < today,
         )
     ).all()

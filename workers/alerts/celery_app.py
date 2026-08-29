@@ -12,7 +12,11 @@ celery_app.conf.beat_schedule = {
     "missed-followups-hourly": {
         "task": "workers.alerts.tasks.evaluate_missed_followups_task",
         "schedule": crontab(minute=15),
-    }
+    },
+    "integration-outbox-drain": {
+        "task": "workers.alerts.tasks.drain_integration_outbox_task",
+        "schedule": 60.0,  # every minute
+    },
 }
 
 import workers.alerts.tasks  # noqa: E402, F401

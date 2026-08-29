@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
@@ -10,6 +12,7 @@ from app.core.db import Base
 from app.models import *  # noqa: F403
 
 config = context.config
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 

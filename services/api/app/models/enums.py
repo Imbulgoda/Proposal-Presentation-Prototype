@@ -91,6 +91,7 @@ class AlertStatus(str, enum.Enum):
 
 
 class FollowUpStatus(str, enum.Enum):
+    SUGGESTED = "SUGGESTED"
     SCHEDULED = "SCHEDULED"
     COMPLETED = "COMPLETED"
     OVERDUE = "OVERDUE"
@@ -98,12 +99,48 @@ class FollowUpStatus(str, enum.Enum):
     RESCHEDULED = "RESCHEDULED"
 
 
+class ClinicianReviewState(str, enum.Enum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+
+
+class ClinicianAssessment(str, enum.Enum):
+    AGREE = "AGREE"
+    DISAGREE = "DISAGREE"
+    FURTHER_ASSESSMENT_REQUIRED = "FURTHER_ASSESSMENT_REQUIRED"
+
+
+class ClinicianWorkflowAction(str, enum.Enum):
+    CONTINUE_MONITORING = "CONTINUE_MONITORING"
+    NUTRITION_REVIEW = "NUTRITION_REVIEW"
+    FURTHER_INVESTIGATION = "FURTHER_INVESTIGATION"
+    REFER = "REFER"
+    REQUEST_INTERVENTION_REASSESSMENT = "REQUEST_INTERVENTION_REASSESSMENT"
+    NO_ACTION_RECORDED = "NO_ACTION_RECORDED"
+
+
 class ModelStatus(str, enum.Enum):
     EXPERIMENTAL = "EXPERIMENTAL"
     VALIDATED_RESEARCH = "VALIDATED_RESEARCH"
     STAGING = "STAGING"
+    CANDIDATE = "CANDIDATE"
     ACTIVE = "ACTIVE"
     RETIRED = "RETIRED"
+
+
+class IntegrationDeliveryStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    DELIVERING = "DELIVERING"
+    DELIVERED = "DELIVERED"
+    FAILED_RETRYABLE = "FAILED_RETRYABLE"
+    FAILED_FINAL = "FAILED_FINAL"
+
+
+class C3RequestStatus(str, enum.Enum):
+    QUEUED = "QUEUED"
+    PROCESSING = "PROCESSING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 class PredictionMode(str, enum.Enum):
@@ -123,6 +160,8 @@ class DataQualityFlag(str, enum.Enum):
 
 class IntegrationEventType(str, enum.Enum):
     PREDICTION_COMPLETED = "prediction.completed"
+    CLINICIAN_REVIEW_COMPLETED = "clinician_review.completed"
+    MODEL_ACTIVATED = "model.activated"
     TRAJECTORY_UPDATED = "trajectory.updated"
     ALERT_CREATED = "alert.created"
     PROGRESS_STAGNATING = "progress.stagnating"
@@ -131,6 +170,7 @@ class IntegrationEventType(str, enum.Enum):
     COUNTERFACTUAL_REQUESTED = "counterfactual.requested"
     EXPLAINABILITY_REQUESTED = "explainability.requested"
     DRIFT_OBSERVATION = "drift.observation"
+    MODEL_UPDATE_PROPOSED = "model.update_proposed"
 
 
 class NotificationChannel(str, enum.Enum):
@@ -151,9 +191,18 @@ class AuditAction(str, enum.Enum):
     PREDICTION_GENERATED = "prediction_generated"
     ALERT_ACKNOWLEDGED = "alert_acknowledged"
     ALERT_RESOLVED = "alert_resolved"
+    ALERT_DISMISSED = "alert_dismissed"
+    ALERT_IN_REVIEW = "alert_in_review"
+    CLINICIAN_REVIEW_CREATED = "clinician_review_created"
+    CLINICIAN_REVIEW_UPDATED = "clinician_review_updated"
     CLINICAL_NOTE_CREATED = "clinical_note_created"
     REPORT_EXPORTED = "report_exported"
     MODEL_VERSION_ACTIVATED = "model_version_activated"
     USER_CHANGED = "user_changed"
     FOLLOW_UP_CHANGED = "follow_up_changed"
     REASSESSMENT_REQUESTED = "reassessment_requested"
+    C3_REASSESSMENT_REQUESTED = "c3_reassessment_requested"
+    C3_REASSESSMENT_DELIVERED = "c3_reassessment_delivered"
+    C4_PREDICTION_OBSERVATION_QUEUED = "c4_prediction_observation_queued"
+    C4_MODEL_UPDATE_RECEIVED = "c4_model_update_received"
+    MODEL_CANDIDATE_REGISTERED = "model_candidate_registered"

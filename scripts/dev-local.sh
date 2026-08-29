@@ -32,5 +32,8 @@ PYTHONPATH="$ROOT/services/api:$ROOT" "$ROOT/.venv/bin/alembic" upgrade head
 PYTHONPATH="$ROOT/services/api:$ROOT" "$ROOT/.venv/bin/python" -m app.seed
 cd "$ROOT"
 
-echo "Starting inference :8001, API :8000, web :3000"
-echo "Open http://localhost:3000  (phm@demo.local / DemoPass123!)"
+echo "Starting inference :8001, API :8000, client :3000"
+echo "Open http://localhost:3000  (doctor@demo.local / Doc123)"
+cd "$ROOT/client"
+npm install
+npm run dev

@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+from datetime import UTC, date, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
+from app.core.config import get_settings
 from app.core.db import get_db
+from app.core.security import FieldEncryptor
 from app.core.deps import require_permission
 from app.core.policy import load_clinical_policy
+from app.integrations.common.outbox import kick_delivery_best_effort, pop_scheduled_delivery_ids
 from app.models.enums import AuditAction, Sex, VisitStatus, VisitType
+from app.models.intelligence import ModelVersion, Prediction
 from app.models.paediatric import (
     AnthropometricRecord,
     Child,
@@ -17,11 +22,18 @@ from app.models.paediatric import (
     MaternalChildHealthRecord,
     SocioeconomicRecord,
     Visit,
+    VisitContextSnapshot,
 )
 from app.schemas.common import VisitCreate, VisitOut
 from app.security.rbac import assert_child_access
 from app.services.audit import write_audit
+from app.services.context_snapshot import (
+    dietary_diversity_category_from_score,
+    exclusive_breastfeeding_from_status,
+    resolve_context_for_visit_date,
+)
 from app.services.prediction import run_inference
+from app.services.prediction_explanation import build_prediction_explanation
 from app.services.quality import validate_visit_payload
 
 router = APIRouter(tags=["visits"])
@@ -29,7 +41,43 @@ router = APIRouter(tags=["visits"])
 
 def _visit_number(db: Session, child_id) -> int:
     last = db.scalar(select(Visit).where(Visit.child_id == child_id).order_by(Visit.visit_number.desc()).limit(1))
-    return 0 if last is None else last.visit_number + 1
+    return 1 if last is None else last.visit_number + 1
+
+
+@router.get("/children/{child_id}/visits/prefill")
+def visit_prefill(child_id: UUID, db: Session = Depends(get_db), current=Depends(require_permission("visit:read"))):
+    """Return child context and last visit modality data for follow-up entry."""
+    child = db.get(Child, child_id)
+    if not child:
+        raise HTTPException(404, "Child not found")
+    assert_child_access(current, child)
+    last = db.scalar(select(Visit).where(Visit.child_id == child_id).order_by(Visit.visit_number.desc()).limit(1))
+    age_months = (last.visit_date.year - child.date_of_birth.year) * 12 + (last.visit_date.month - child.date_of_birth.month) if last else None
+    if last is None:
+        age_months = (date.today().year - child.date_of_birth.year) * 12 + (date.today().month - child.date_of_birth.month)
+    payload = {
+        "child": {
+            "id": str(child.id),
+            "pseudonymous_id": child.pseudonymous_id,
+            "study_serial_number": child.study_serial_number,
+            "full_name": FieldEncryptor(get_settings().encryption_key).decrypt(child.full_name_encrypted)
+            if child.full_name_encrypted
+            else None,
+            "sex": child.sex.value,
+            "date_of_birth": child.date_of_birth.isoformat(),
+            "age_months": age_months,
+            "visit_count": 0 if last is None else last.visit_number,
+            "is_baseline": last is None,
+            "visit_label": "V1" if last is None else f"V{last.visit_number + 1}",
+        },
+        "last_visit_id": str(last.id) if last else None,
+        "anthropometric": _row(last.anthropometry) if last else None,
+        "socioeconomic": _row(last.socioeconomic) if last else None,
+        "dietary": _row(last.dietary) if last else None,
+        "maternal_child_health": _row(last.maternal_child_health) if last else None,
+        "context_preview": resolve_context_for_visit_date(last.visit_date if last else datetime.now(tz=UTC)),
+    }
+    return payload
 
 
 @router.get("/children/{child_id}/visits")
@@ -76,10 +124,13 @@ def create_visit(
             "maternal_education": previous.socioeconomic.maternal_education,
             "paternal_education": previous.socioeconomic.paternal_education,
             "maternal_employment": previous.socioeconomic.maternal_employment,
+            "maternal_age_years": previous.socioeconomic.maternal_age_years,
+            "income_category": previous.socioeconomic.income_category,
             "household_size": previous.socioeconomic.household_size,
             "geographical_area": previous.socioeconomic.geographical_area,
             "drinking_water": previous.socioeconomic.drinking_water,
             "sanitation": previous.socioeconomic.sanitation,
+            "remarks": previous.socioeconomic.remarks,
         }
         stale = True
     report = validate_visit_payload(payload, policy, socioeconomic_stale=stale)
@@ -128,12 +179,31 @@ def create_visit(
     socio = payload.get("socioeconomic") or {}
     db.add(SocioeconomicRecord(visit_id=visit.id, carried_forward=stale, **{k: socio.get(k) for k in [
         "wealth_proxy", "maternal_education", "paternal_education", "maternal_employment",
-        "household_size", "geographical_area", "drinking_water", "sanitation"
+        "maternal_age_years", "income_category", "household_size", "geographical_area",
+        "drinking_water", "sanitation", "remarks",
     ]}))
     diet = (body.dietary.model_dump() if body.dietary else {})
+    if diet.get("exclusive_breastfeeding") is None:
+        diet["exclusive_breastfeeding"] = exclusive_breastfeeding_from_status(diet.get("breastfeeding_status"))
+    if diet.get("dietary_diversity_category") is None:
+        diet["dietary_diversity_category"] = dietary_diversity_category_from_score(diet.get("dietary_diversity_score"))
     db.add(DietaryRecord(visit_id=visit.id, **diet))
     mch = (body.maternal_child_health.model_dump() if body.maternal_child_health else {})
     db.add(MaternalChildHealthRecord(visit_id=visit.id, **mch))
+    context = resolve_context_for_visit_date(body.visit_date)
+    db.add(
+        VisitContextSnapshot(
+            visit_id=visit.id,
+            visit_year=int(context.get("visit_year") or body.visit_date.year),
+            economic_growth_rate_pct=context.get("economic_growth_rate_pct"),
+            food_price_inflation_pct=context.get("food_price_inflation_pct"),
+            food_price_index=context.get("food_price_index"),
+            economy_stress_level=context.get("economy_stress_level"),
+            events=context.get("events"),
+            schema_version=context.get("schema_version"),
+            source_note=context.get("source_note"),
+        )
+    )
     write_audit(
         db,
         action=AuditAction.VISIT_CREATED,
@@ -165,8 +235,12 @@ def create_visit(
     db.refresh(visit)
     visit.anthropometry  # load
     prediction = run_inference(db, visit, child, current.id, request.client.host if request.client else None)
+    kick_delivery_best_effort(pop_scheduled_delivery_ids(db))
+    visit_loaded = _load_visit_for_explanation(db, visit.id) or visit
+    explanation = _explanation_payload(db, visit_loaded, child, prediction)
     result["prediction"] = {
         "id": str(prediction.id),
+        "visit_id": str(visit.id),
         "status": prediction.status_prediction,
         "severity": prediction.severity_prediction,
         "risk": prediction.primary_risk_score,
@@ -175,6 +249,7 @@ def create_visit(
         "run_number": prediction.run_number,
         "inference_ms": prediction.inference_ms,
     }
+    result["explanation"] = explanation
     result["visit"].status = visit.status.value
     return result
 
@@ -196,6 +271,7 @@ def get_visit(visit_id: UUID, db: Session = Depends(get_db), current=Depends(req
         "socioeconomic": _row(visit.socioeconomic),
         "dietary": _row(visit.dietary),
         "maternal_child_health": _row(visit.maternal_child_health),
+        "external_context": _row(visit.context_snapshot),
         "data_quality": visit.data_quality,
     }
 
@@ -210,6 +286,7 @@ def predict_visit(visit_id: UUID, request: Request, db: Session = Depends(get_db
     if visit.status == VisitStatus.DRAFT:
         raise HTTPException(422, "Submit the visit before running prediction")
     prediction = run_inference(db, visit, child, current.id, request.client.host if request.client else None)
+    kick_delivery_best_effort(pop_scheduled_delivery_ids(db))
     return {
         "id": str(prediction.id),
         "run_number": prediction.run_number,
@@ -246,6 +323,44 @@ def get_prediction(visit_id: UUID, db: Session = Depends(get_db), current=Depend
         }
         for p in preds
     ]
+
+
+@router.get("/visits/{visit_id}/prediction/explanation")
+def get_prediction_explanation(visit_id: UUID, db: Session = Depends(get_db), current=Depends(require_permission("visit:read"))):
+    visit = _load_visit_for_explanation(db, visit_id)
+    if not visit:
+        raise HTTPException(404, "Visit not found")
+    child = db.get(Child, visit.child_id)
+    assert_child_access(current, child)
+    prediction = _active_prediction_for_visit(db, visit_id)
+    if prediction is None:
+        raise HTTPException(404, "No active prediction for this visit")
+    return _explanation_payload(db, visit, child, prediction)
+
+
+def _load_visit_for_explanation(db: Session, visit_id: UUID) -> Visit | None:
+    return db.scalar(
+        select(Visit)
+        .where(Visit.id == visit_id)
+        .options(
+            joinedload(Visit.anthropometry),
+            joinedload(Visit.socioeconomic),
+            joinedload(Visit.dietary),
+            joinedload(Visit.maternal_child_health),
+            joinedload(Visit.context_snapshot),
+        )
+    )
+
+
+def _active_prediction_for_visit(db: Session, visit_id: UUID) -> Prediction | None:
+    return db.scalar(
+        select(Prediction).where(Prediction.visit_id == visit_id, Prediction.is_active.is_(True)).limit(1)
+    )
+
+
+def _explanation_payload(db: Session, visit: Visit, child: Child, prediction: Prediction) -> dict:
+    model = db.get(ModelVersion, prediction.model_version_id)
+    return build_prediction_explanation(child=child, visit=visit, prediction=prediction, model=model)
 
 
 def _row(obj):

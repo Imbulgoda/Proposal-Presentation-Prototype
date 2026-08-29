@@ -128,7 +128,9 @@ def resolve(alert_id: UUID, body: AlertPatch, request: Request, db: Session = De
 
 
 @router.patch("/{alert_id}/dismiss")
-def dismiss(alert_id: UUID, body: AlertPatch, db: Session = Depends(get_db), current=Depends(require_permission("alert:write"))):
+def dismiss(alert_id: UUID, body: AlertPatch, request: Request, db: Session = Depends(get_db), current=Depends(require_permission("alert:write"))):
+    from datetime import UTC, datetime
+
     alert = db.get(Alert, alert_id)
     if not alert:
         raise HTTPException(404, "Alert not found")
@@ -136,4 +138,41 @@ def dismiss(alert_id: UUID, body: AlertPatch, db: Session = Depends(get_db), cur
         raise HTTPException(422, "A reason is required to dismiss an alert")
     alert.status = AlertStatus.DISMISSED_WITH_REASON
     alert.resolution_notes = body.reason
+    alert.resolved_at = datetime.now(UTC)
+    alert.resolved_by = current.id
+    write_audit(
+        db,
+        action=AuditAction.ALERT_DISMISSED,
+        resource_type="alert",
+        resource_id=str(alert.id),
+        user_id=current.id,
+        role=current.role.value,
+        facility_id=alert.facility_id,
+        ip=request.client.host if request.client else None,
+        metadata={"reason": body.reason},
+    )
+    return {"ok": True, "status": alert.status.value}
+
+
+@router.patch("/{alert_id}/review")
+def mark_in_review(alert_id: UUID, body: AlertPatch, request: Request, db: Session = Depends(get_db), current=Depends(require_permission("alert:write"))):
+    alert = db.get(Alert, alert_id)
+    if not alert:
+        raise HTTPException(404, "Alert not found")
+    if alert.status not in {AlertStatus.OPEN, AlertStatus.ACKNOWLEDGED, AlertStatus.IN_REVIEW}:
+        raise HTTPException(422, f"Cannot move alert from {alert.status.value} to IN_REVIEW")
+    alert.status = AlertStatus.IN_REVIEW
+    if body.notes:
+        alert.resolution_notes = body.notes
+    write_audit(
+        db,
+        action=AuditAction.ALERT_IN_REVIEW,
+        resource_type="alert",
+        resource_id=str(alert.id),
+        user_id=current.id,
+        role=current.role.value,
+        facility_id=alert.facility_id,
+        ip=request.client.host if request.client else None,
+        metadata={"status": "IN_REVIEW"},
+    )
     return {"ok": True, "status": alert.status.value}

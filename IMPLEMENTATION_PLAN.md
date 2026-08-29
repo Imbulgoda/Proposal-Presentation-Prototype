@@ -23,7 +23,7 @@ Frontend and backend consume this file (copied/mounted at build time). Renaming 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌─────────────────┐
 │  Next.js Web │────▶│  FastAPI API │────▶│ PostgreSQL      │
-│  (apps/web)  │     │ (services/api)│     │ Redis           │
+│  (client)    │     │ (services/api)│     │ Redis           │
 └──────────────┘     └──────┬───────┘     └─────────────────┘
                             │
                  ┌──────────┼──────────┐
@@ -45,7 +45,7 @@ Frontend and backend consume this file (copied/mounted at build time). Renaming 
 
 | Service | Responsibility |
 |---|---|
-| `apps/web` | Clinical and research UI. Never trusts UI-only RBAC. |
+| `client` | Clinical and research UI. Never trusts UI-only RBAC. |
 | `services/api` | Auth, RBAC, domain, audit, orchestration, OpenAPI. |
 | `services/inference` | Model adapters (demo / sklearn / pytorch / onnx). Stateless. |
 | `workers/alerts` | Scheduled missed-follow-up and duplicate-safe alert evaluation. |
@@ -77,7 +77,7 @@ Health worker login → dashboard → find/register child → profile → new vi
 
 ## 4. Packages to install
 
-### Frontend (`apps/web`)
+### Frontend (`client`)
 
 - next, react, react-dom, typescript
 - tailwindcss, postcss, autoprefixer
@@ -154,14 +154,13 @@ After each phase: format, lint, typecheck, tests, and fix errors before continui
 
 ## 6. Demo accounts (development only)
 
-| Role | Email | Password |
-|---|---|---|
-| System Administrator | admin@demo.local | DemoPass123! |
-| Facility Administrator | clinic-admin@demo.local | DemoPass123! |
-| Doctor | doctor@demo.local | DemoPass123! |
-| PHM / Health Worker | phm@demo.local | DemoPass123! |
-| Nutritionist | nutritionist@demo.local | DemoPass123! |
-| Researcher | researcher@demo.local | DemoPass123! |
+| Role | Email | Password | Facility |
+|---|---|---|---|
+| Doctor (Colombo) | doctor@demo.local | Doc123 | MOH Colombo Demo |
+| Doctor (Kandy) | doctor.kandy@demo.local | Doc123 | MOH Kandy Demo |
+| Doctor (Galle) | doctor.galle@demo.local | Doc123 | MOH Galle Demo |
+
+Only doctor accounts can sign in. Non-doctor seed roles are not created in new installs.
 
 Never use these passwords in production.
 

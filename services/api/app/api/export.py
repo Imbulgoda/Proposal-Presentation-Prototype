@@ -40,10 +40,16 @@ def export_deidentified(request: Request, db: Session = Depends(get_db), current
         role=current.role.value,
         facility_id=current.user.facility_id,
         ip=request.client.host if request.client else None,
-        metadata={"rows": len(rows), "identity_fields_excluded": True},
+        metadata={"rows": len(rows), "identity_fields_excluded": True, "synthetic": True},
     )
+    from app.services.model_display import get_model_output_display_metadata
+
+    semantics = get_model_output_display_metadata()
     return {
         "confirmation": "Export includes only pseudonymous identifiers. Direct identity fields were excluded.",
+        "disclaimer": semantics["report_disclaimer"],
         "rows": rows,
         "synthetic": True,
+        "clinical_use": False,
+        "display_semantics": semantics,
     }

@@ -3,9 +3,9 @@ from app.models.enums import UserRole
 
 
 def test_password_hash_roundtrip():
-    hashed = hash_password("DemoPass123!")
-    assert hashed != "DemoPass123!"
-    assert verify_password("DemoPass123!", hashed)
+    hashed = hash_password("Doc123")
+    assert hashed != "Doc123"
+    assert verify_password("Doc123", hashed)
     assert not verify_password("wrong", hashed)
 
 
