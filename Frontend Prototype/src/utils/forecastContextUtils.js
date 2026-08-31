@@ -20,25 +20,114 @@ export const MONTH_OPTIONS = [MONTH_ALL, ...MONTHS];
 
 export const FORECAST_YEARS = [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2035];
 
+export const FORECAST_HORIZONS = [
+  { value: 1, label: '1 Month' },
+  { value: 3, label: '3 Months' },
+  { value: 6, label: '6 Months' },
+];
+
+export const FORECAST_MODELS = ['NGBoost', 'XGBoost', 'Random Forest', 'LSTM'];
+
+export const START_MONTH_OPTIONS = (() => {
+  const options = [];
+  for (const year of [2026, 2027, 2028]) {
+    for (const month of MONTHS) {
+      options.push({ label: `${month} ${year}`, month, year });
+    }
+  }
+  return options;
+})();
+
+export const RISK_LEVELS = ['Very High', 'High', 'Medium', 'Low', 'Very Low'];
+
 export const defaultForecastContext = {
-  year: 2025,
-  month: MONTH_ALL,
+  year: 2027,
+  month: 'January',
   district: DISTRICT_ALL,
-  model: 'XGBoost',
+  model: 'NGBoost',
+  horizon: 1,
+  startMonth: 'January',
+  startYear: 2027,
+  activeMonth: 'January',
+  activeYear: 2027,
+  predictedCases: null,
+  risk: null,
+  lower: null,
+  upper: null,
+  uncertainty: null,
+  generatedAt: null,
   generated: false,
   result: null,
 };
 
+export function monthYearKey(month, year) {
+  return `${month} ${year}`;
+}
+
+export function parseMonthYear(label) {
+  if (!label || typeof label !== 'string') return null;
+  const parts = label.trim().split(/\s+/);
+  if (parts.length < 2) return null;
+  const year = Number(parts[parts.length - 1]);
+  const month = parts.slice(0, -1).join(' ');
+  if (!MONTHS.includes(month) || Number.isNaN(year)) return null;
+  return { month, year };
+}
+
+export function addMonths(month, year, offset) {
+  const startIndex = MONTHS.indexOf(month);
+  if (startIndex < 0) return { month, year };
+  const total = startIndex + offset;
+  return {
+    month: MONTHS[((total % 12) + 12) % 12],
+    year: year + Math.floor(total / 12),
+  };
+}
+
+export function getHorizonMonthTabs(startMonth, startYear, horizon) {
+  const months = [];
+  const count = Number(horizon) || 1;
+  for (let i = 0; i < count; i += 1) {
+    const next = addMonths(startMonth, startYear, i);
+    months.push({
+      month: next.month,
+      year: next.year,
+      label: monthYearKey(next.month, next.year),
+      shortLabel: next.month.slice(0, 3),
+      index: i,
+    });
+  }
+  return months;
+}
+
 export function migrateForecastContext(context = {}) {
   let month = context.month;
-  if (month === 'Non-Selected') month = MONTH_ALL;
+  if (month === 'Non-Selected' || month === MONTH_ALL) month = context.activeMonth || 'January';
 
   let district = context.district;
   if (district === 'National (all districts)' || district === 'National') {
     district = DISTRICT_ALL;
   }
 
-  return { ...context, month, district };
+  const startMonth = context.startMonth || month || 'January';
+  const startYear = Number(context.startYear || context.year || 2027);
+  const activeMonth = context.activeMonth || month || startMonth;
+  const activeYear = Number(context.activeYear || context.year || startYear);
+  const horizon = Number(context.horizon || 1);
+
+  return {
+    ...defaultForecastContext,
+    ...context,
+    month: activeMonth,
+    year: activeYear,
+    district,
+    startMonth,
+    startYear,
+    activeMonth,
+    activeYear,
+    horizon: [1, 3, 6].includes(horizon) ? horizon : 1,
+    model: context.model || 'NGBoost',
+  };
 }
 
 export function isAllMonths(month) {
@@ -84,17 +173,146 @@ export function scaleByContext(value, year, month, district) {
   return Math.round(Number(value || 0) * factor);
 }
 
+export function riskFromPredictedCases(cases, isNational = false) {
+  const value = Number(cases) || 0;
+  if (isNational) {
+    if (value >= 9000) return 'Very High';
+    if (value >= 7800) return 'High';
+    if (value >= 6500) return 'Medium';
+    if (value >= 5200) return 'Low';
+    return 'Very Low';
+  }
+  if (value >= 580) return 'Very High';
+  if (value >= 420) return 'High';
+  if (value >= 280) return 'Medium';
+  if (value >= 160) return 'Low';
+  return 'Very Low';
+}
+
+export function uncertaintyFromCiWidth(width, predicted) {
+  const ratio = predicted > 0 ? width / predicted : 1;
+  if (ratio <= 0.12) return 'Low';
+  if (ratio <= 0.22) return 'Medium';
+  return 'High';
+}
+
+export function riskBadgeClass(risk) {
+  if (risk === 'Very High' || risk === 'Critical') return 'bg-danger/10 text-danger';
+  if (risk === 'High') return 'bg-orange-100 text-orange-700';
+  if (risk === 'Medium') return 'bg-warning/10 text-warning';
+  if (risk === 'Low') return 'bg-emerald-100 text-emerald-700';
+  return 'bg-sky-100 text-sky-700';
+}
+
+export function uncertaintyBadgeClass(level) {
+  if (level === 'High') return 'bg-danger/10 text-danger';
+  if (level === 'Medium') return 'bg-warning/10 text-warning';
+  return 'bg-success/10 text-success';
+}
+
 export function adjustDistrictRecord(district, year, month) {
   if (!district) return district;
+  const cases = scaleByContext(district.cases, year, month, district.name);
   return {
     ...district,
-    cases: scaleByContext(district.cases, year, month, district.name),
+    cases,
     triposha: scaleByContext(district.triposha, year, month, district.name),
     dmpi: Math.min(99, Math.max(20, scaleByContext(district.dmpi, year, month, district.name))),
     triposhaCoverage: Math.min(
       95,
       Math.max(45, scaleByContext(district.triposhaCoverage, year, month, district.name))
     ),
+    risk: riskFromPredictedCases(cases, false),
+  };
+}
+
+/** Prefer forecast result values so all pages stay consistent. */
+export function getActiveMonthKey(context) {
+  const ctx = migrateForecastContext(context);
+  return monthYearKey(ctx.activeMonth, ctx.activeYear);
+}
+
+export function getActiveMonthSnapshot(context) {
+  const ctx = migrateForecastContext(context);
+  const key = getActiveMonthKey(ctx);
+  return ctx.result?.monthsData?.[key] || null;
+}
+
+export function getDistrictForecastRow(context, districtName) {
+  const snapshot = getActiveMonthSnapshot(context);
+  if (!snapshot?.districts?.length) return null;
+  if (isAllDistricts(districtName)) {
+    return snapshot.national || null;
+  }
+  return snapshot.districts.find((d) => d.name === districtName) || null;
+}
+
+export function getForecastAwareDistricts(baseDistricts, context) {
+  const ctx = migrateForecastContext(context);
+  if (!ctx.generated) return baseDistricts;
+
+  const snapshot = getActiveMonthSnapshot(ctx);
+  if (snapshot?.districts?.length) {
+    const byName = Object.fromEntries(snapshot.districts.map((d) => [d.name, d]));
+    return baseDistricts.map((base) => {
+      const forecast = byName[base.name];
+      if (!forecast) return adjustDistrictRecord(base, ctx.activeYear, ctx.activeMonth);
+      return {
+        ...base,
+        cases: forecast.predictedCases,
+        risk: forecast.risk,
+        lower: forecast.lower,
+        upper: forecast.upper,
+        uncertainty: forecast.uncertainty,
+        ci: forecast.ci,
+        triposha: Math.round(forecast.predictedCases * 6.2),
+        trend: forecast.trend || base.trend,
+      };
+    });
+  }
+
+  return baseDistricts.map((d) => adjustDistrictRecord(d, ctx.activeYear, ctx.activeMonth));
+}
+
+export function getActiveForecastSummary(context) {
+  const ctx = migrateForecastContext(context);
+  if (!ctx.generated) return null;
+
+  const snapshot = getActiveMonthSnapshot(ctx);
+  const row = getDistrictForecastRow(ctx, ctx.district);
+
+  if (row) {
+    return {
+      ...ctx,
+      predictedCases: row.predictedCases,
+      risk: row.risk,
+      lower: row.lower,
+      upper: row.upper,
+      uncertainty: row.uncertainty,
+      ci: row.ci,
+      label: getActiveMonthKey(ctx),
+      horizonLabel: `${ctx.horizon}-Month Horizon`,
+    };
+  }
+
+  if (snapshot?.summary) {
+    return {
+      ...ctx,
+      predictedCases: snapshot.summary.avgPredictedCases,
+      risk: snapshot.summary.avgRisk || 'Medium',
+      lower: snapshot.summary.avgLower,
+      upper: snapshot.summary.avgUpper,
+      uncertainty: snapshot.summary.avgUncertaintyLevel || 'Medium',
+      ci: snapshot.summary.avgCi,
+      label: getActiveMonthKey(ctx),
+      horizonLabel: `${ctx.horizon}-Month Horizon`,
+    };
+  }
+
+  return {
+    ...ctx,
+    label: getActiveMonthKey(ctx),
+    horizonLabel: `${ctx.horizon}-Month Horizon`,
   };
 }
 
@@ -109,7 +327,29 @@ export function filterByContextDistrict(items, districtKey, district) {
   return items.filter((item) => item[districtKey] === name);
 }
 
-export function getDashboardMetricsFromContext(baseMetrics, year, month, district) {
+export function getDashboardMetricsFromContext(baseMetrics, year, month, district, context) {
+  const summary = context ? getActiveForecastSummary(context) : null;
+  if (summary?.predictedCases != null) {
+    const isNational = isAllDistricts(district);
+    const predictedCases = summary.predictedCases;
+    const triposhaRequirement = Math.round(predictedCases * 6.2);
+    return {
+      ...baseMetrics,
+      predictedCases,
+      triposhaRequirement,
+      predictedCasesChange: Number(
+        (((predictedCases - baseMetrics.predictedCases) / baseMetrics.predictedCases) * 100).toFixed(1)
+      ),
+      highRiskDistricts: isNational
+        ? baseMetrics.highRiskDistricts
+        : Math.max(1, Math.min(6, Math.round(baseMetrics.highRiskDistricts / 4))),
+      earlyWarningAlerts: isNational
+        ? baseMetrics.earlyWarningAlerts
+        : Math.max(1, Math.min(5, Math.round(baseMetrics.earlyWarningAlerts / 3))),
+      totalDistricts: isNational ? baseMetrics.totalDistricts : 1,
+    };
+  }
+
   const isNational = isAllDistricts(district);
   const predictedCases = scaleByContext(baseMetrics.predictedCases, year, month, district);
   const triposhaRequirement = scaleByContext(
@@ -146,11 +386,35 @@ export function getTriposhaDemandFromContext(baseDemand, year, month, district) 
   }));
 }
 
-export function getTopDistrictsFromContext(topDistricts, districts, year, month, district) {
+export function getTopDistrictsFromContext(topDistricts, allDistricts, year, month, district, context) {
+  const snapshot = context ? getActiveMonthSnapshot(context) : null;
+  if (snapshot?.top5?.length) {
+    const name = getContextDistrictName(district);
+    if (name) {
+      const selected = snapshot.districts.find((d) => d.name === name);
+      if (selected) {
+        return [
+          {
+            rank: 1,
+            district: selected.name,
+            cases: selected.predictedCases,
+            risk: selected.risk,
+          },
+        ];
+      }
+    }
+    return snapshot.top5.map((d, i) => ({
+      rank: i + 1,
+      district: d.name,
+      cases: d.predictedCases,
+      risk: d.risk,
+    }));
+  }
+
   const name = getContextDistrictName(district);
   if (!name) return topDistricts;
 
-  const selected = districts.find((d) => d.name === name);
+  const selected = allDistricts.find((d) => d.name === name);
   if (!selected) return topDistricts;
 
   const adjusted = adjustDistrictRecord(selected, year, month);
@@ -306,4 +570,15 @@ export function getNationalDistrictProfile(allDistricts, year, month, applyConte
 
 export function isNationalForecastScope(district, generated) {
   return Boolean(generated && isAllDistricts(district));
+}
+
+export function getTrendLabel(values = []) {
+  if (values.length < 2) return 'Stable';
+  const first = values[0];
+  const last = values[values.length - 1];
+  const delta = last - first;
+  const threshold = Math.max(8, first * 0.03);
+  if (delta > threshold) return 'Increasing';
+  if (delta < -threshold) return 'Decreasing';
+  return 'Stable';
 }

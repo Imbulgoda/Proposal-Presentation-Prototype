@@ -6,23 +6,28 @@ import ExportToolbar from '../components/export/ExportToolbar';
 import { districts } from '../data/districtData';
 import { useApp } from '../context/AppContext';
 import {
-  adjustDistrictRecord,
   getContextDistrictName,
+  getForecastAwareDistricts,
+  riskBadgeClass,
 } from '../utils/forecastContextUtils';
 
-const filters = ['All Districts', 'High Risk', 'Medium Risk', 'Low Risk'];
+const filters = [
+  'All Districts',
+  'Very High Risk',
+  'High Risk',
+  'Medium Risk',
+  'Low Risk',
+  'Very Low Risk',
+];
 
 export default function GISMap() {
-  const { forecastContext } = useApp();
-  const { year, month, district, generated } = forecastContext;
+  const { forecastContext, applyForecastContext } = useApp();
+  const { district, generated } = forecastContext;
   const contextDistrictName = getContextDistrictName(district);
 
   const contextDistricts = useMemo(
-    () =>
-      districts.map((d) =>
-        generated ? adjustDistrictRecord(d, year, month) : d
-      ),
-    [generated, year, month]
+    () => (generated ? getForecastAwareDistricts(districts, forecastContext) : districts),
+    [generated, forecastContext]
   );
 
   const initialSelected = useMemo(() => {
@@ -39,8 +44,20 @@ export default function GISMap() {
     setSelected(initialSelected);
   }, [initialSelected]);
 
-  const riskFilter =
-    filter === 'All Districts' ? 'All' : filter.replace(' Risk', '');
+  const handleSelect = (d) => {
+    setSelected(d);
+    if (!generated) return;
+    applyForecastContext({
+      district: d.name,
+      predictedCases: d.cases,
+      risk: d.risk,
+      lower: d.lower ?? null,
+      upper: d.upper ?? null,
+      uncertainty: d.uncertainty ?? null,
+    });
+  };
+
+  const riskFilter = filter === 'All Districts' ? 'All' : filter.replace(/ Risk$/, '');
 
   const list = contextDistricts
     .filter((d) => riskFilter === 'All' || d.risk === riskFilter)
@@ -95,15 +112,17 @@ export default function GISMap() {
               <SriLankaMap
                 filterRisk={riskFilter === 'All' ? 'All' : riskFilter}
                 selectedId={selected?.id}
-                onSelect={setSelected}
+                onSelect={handleSelect}
                 height="520px"
                 districtData={contextDistricts}
               />
               <div className="absolute bottom-3 left-3 z-[400] rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs shadow">
                 <p className="mb-1 font-semibold text-primary">Risk Legend</p>
-                <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-danger" /> High Risk</p>
-                <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-warning" /> Medium Risk</p>
-                <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Low Risk</p>
+                <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-danger" /> Very High</p>
+                <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-orange-500" /> High</p>
+                <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-warning" /> Medium</p>
+                <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Low</p>
+                <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-sky-500" /> Very Low</p>
               </div>
             </div>
           </div>
@@ -115,6 +134,8 @@ export default function GISMap() {
               <div className="divide-y divide-slate-100 text-sm">
                 {[
                   ['Predicted Cases', selected?.cases],
+                  ['95% CI', selected?.ci || (selected?.lower != null ? `${selected.lower} – ${selected.upper}` : '—')],
+                  ['Uncertainty', selected?.uncertainty || '—'],
                   ['Risk', selected?.risk],
                   ['Triposha', `${selected?.triposha?.toLocaleString()} Packs`],
                   ['Trend', selected?.trend],
@@ -126,13 +147,7 @@ export default function GISMap() {
                     <span className="text-slate-500">{label}</span>
                     {label === 'Risk' ? (
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          value === 'High'
-                            ? 'bg-danger/10 text-danger'
-                            : value === 'Medium'
-                              ? 'bg-warning/10 text-warning'
-                              : 'bg-success/10 text-success'
-                        }`}
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${riskBadgeClass(value)}`}
                       >
                         {value}
                       </span>
@@ -152,7 +167,7 @@ export default function GISMap() {
                   <button
                     key={d.id}
                     type="button"
-                    onClick={() => setSelected(d)}
+                    onClick={() => handleSelect(d)}
                     className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition ${
                       selected?.id === d.id ? 'bg-secondary/10' : 'hover:bg-surface'
                     }`}
@@ -161,15 +176,9 @@ export default function GISMap() {
                     <div className="flex items-center gap-2">
                       <span className="text-slate-500">{d.cases}</span>
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          d.risk === 'High'
-                            ? 'bg-danger/10 text-danger'
-                            : d.risk === 'Medium'
-                              ? 'bg-warning/10 text-warning'
-                              : 'bg-success/10 text-success'
-                        }`}
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${riskBadgeClass(d.risk)}`}
                       >
-                        {d.risk} Risk
+                        {d.risk}
                       </span>
                     </div>
                   </button>

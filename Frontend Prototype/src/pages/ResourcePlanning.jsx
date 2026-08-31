@@ -19,6 +19,7 @@ import { generateDistributionPlan, resourceSummary } from '../data/resourceData'
 import { useApp } from '../context/AppContext';
 import {
   filterByContextDistrict,
+  getActiveForecastSummary,
   getContextDistrictName,
   scaleByContext,
 } from '../utils/forecastContextUtils';
@@ -27,20 +28,23 @@ export default function ResourcePlanning() {
   const { forecastContext } = useApp();
   const { year, month, district, generated } = forecastContext;
   const [plan, setPlan] = useState(null);
+  const forecastSummary = getActiveForecastSummary(forecastContext);
 
   const summary = useMemo(() => {
     if (!generated) return resourceSummary;
+    const burden =
+      forecastSummary?.predictedCases != null
+        ? forecastSummary.predictedCases
+        : scaleByContext(resourceSummary.totalRequirement / 6.2, year, month, district);
+    const totalRequirement = Math.round(burden * 6.2);
+    const availableStock = scaleByContext(resourceSummary.availableStock, year, month, district);
     return {
-      totalRequirement: scaleByContext(resourceSummary.totalRequirement, year, month, district),
-      availableStock: scaleByContext(resourceSummary.availableStock, year, month, district),
-      additionalRequirement: scaleByContext(
-        resourceSummary.additionalRequirement,
-        year,
-        month,
-        district
-      ),
+      totalRequirement,
+      availableStock,
+      additionalRequirement: Math.max(0, totalRequirement - availableStock),
+      forecastBurden: burden,
     };
-  }, [generated, year, month, district]);
+  }, [generated, year, month, district, forecastSummary]);
 
   const generate = () => {
     const next = generateDistributionPlan();
@@ -70,7 +74,11 @@ export default function ResourcePlanning() {
           <ResourceCard
             title="Total Requirement"
             value={summary.totalRequirement.toLocaleString()}
-            subtitle="Packs this quarter"
+            subtitle={
+              generated && summary.forecastBurden != null
+                ? `From forecast burden ${summary.forecastBurden.toLocaleString()} cases`
+                : 'Packs this quarter'
+            }
             icon={Hexagon}
             accent="#6C5CE7"
             footer={<div className="h-1.5 bg-secondary" />}

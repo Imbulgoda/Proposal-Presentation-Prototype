@@ -16,7 +16,10 @@ export default function ForecastChart({
   height = 320,
   title,
   subtitle,
+  showHistorySplit = true,
 }) {
+  const hasNumericYear = data.some((row) => typeof row.year === 'number' && row.year === 2023);
+
   return (
     <div className="h-full w-full">
       {(title || subtitle) && (
@@ -96,7 +99,9 @@ export default function ForecastChart({
               name="Lower bound"
               connectNulls
             />
-            <ReferenceLine x={2023} stroke="#94a3b8" strokeDasharray="4 4" />
+            {showHistorySplit && hasNumericYear && (
+              <ReferenceLine x={2023} stroke="#94a3b8" strokeDasharray="4 4" />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
