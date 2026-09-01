@@ -5,11 +5,11 @@ import {
   Brain,
   CheckCircle2,
   Database,
+  Activity,
   LineChart,
   LogOut,
   Map,
   Package,
-  Shield,
   Sparkles,
   Stethoscope,
 } from 'lucide-react';
@@ -57,6 +57,24 @@ const components = [
   },
   {
     id: 3,
+    active: true,
+    icon: Activity,
+    title: 'Concept Drift Detection & Model Recalibration',
+    subtitle: 'Adaptive Model Monitoring & Privacy-Safe Updates',
+    description:
+      'Detects changing district data patterns, quantifies model performance decay, and supports privacy-preserving recalibration before forecast quality degrades.',
+    capabilities: [
+      'Concept Drift Detection',
+      'Model Performance Monitoring',
+      'Recalibration Triggering',
+      'Privacy-Preserving Updates',
+    ],
+    status: 'ACTIVE',
+    action: 'Open Prototype',
+    to: '/component/privacy-recalibration',
+  },
+  {
+    id: 4,
     active: false,
     icon: Stethoscope,
     title: 'Personalized Nutrition Intervention',
@@ -72,24 +90,6 @@ const components = [
     status: 'COMING SOON',
     action: 'View Component',
     to: '/component/personalized-nutrition',
-  },
-  {
-    id: 4,
-    active: false,
-    icon: Shield,
-    title: 'Privacy-Preserving Model Recalibration',
-    subtitle: 'Federated Learning & Drift Monitoring',
-    description:
-      'Monitors model changes across healthcare nodes and supports privacy-preserving model recalibration under changing data patterns.',
-    capabilities: [
-      'Federated Learning',
-      'Concept Drift',
-      'Model Recalibration',
-      'Privacy Preservation',
-    ],
-    status: 'COMING SOON',
-    action: 'View Component',
-    to: '/component/privacy-recalibration',
   },
 ];
 
