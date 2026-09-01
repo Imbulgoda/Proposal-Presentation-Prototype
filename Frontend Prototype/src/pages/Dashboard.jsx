@@ -25,10 +25,11 @@ import {
 import { useApp } from '../context/AppContext';
 import { districts } from '../data/districtData';
 import {
-  adjustDistrictRecord,
   filterByContextDistrict,
+  getActiveForecastSummary,
   getContextDistrictName,
   getDashboardMetricsFromContext,
+  getForecastAwareDistricts,
   getForecastSummaryFromContext,
   getTopDistrictsFromContext,
   getTriposhaDemandFromContext,
@@ -39,7 +40,7 @@ export default function Dashboard() {
   const { year, month, district, generated, result } = forecastContext;
 
   const metrics = generated
-    ? getDashboardMetricsFromContext(dashboardMetrics, year, month, district)
+    ? getDashboardMetricsFromContext(dashboardMetrics, year, month, district, forecastContext)
     : dashboardMetrics;
   const chartData = generated
     ? getForecastSummaryFromContext(forecastSummary, year, month, district, result)
@@ -48,26 +49,29 @@ export default function Dashboard() {
     ? getTriposhaDemandFromContext(triposhaDemand, year, month, district)
     : triposhaDemand;
   const districtsView = generated
-    ? getTopDistrictsFromContext(topDistricts, districts, year, month, district)
+    ? getTopDistrictsFromContext(topDistricts, districts, year, month, district, forecastContext)
     : topDistricts;
   const alertsView = generated
     ? filterByContextDistrict(alerts, 'district', district)
     : alerts;
   const contextDistrictName = getContextDistrictName(district);
+  const forecastDistricts = generated
+    ? getForecastAwareDistricts(districts, forecastContext)
+    : districts;
   const selectedDistrict = contextDistrictName
-    ? adjustDistrictRecord(
-        districts.find((d) => d.name === contextDistrictName),
-        year,
-        month
-      )
+    ? forecastDistricts.find((d) => d.name === contextDistrictName)
     : null;
   const demandTotal = demandData.reduce((sum, item) => sum + item.value, 0);
+  const summary = getActiveForecastSummary(forecastContext);
 
   const pdfSections = [
     {
       heading: 'Dashboard Summary',
       lines: [
         generated ? `Context: ${year} | ${month} | ${district}` : 'Context: Default dataset',
+        summary?.predictedCases != null
+          ? `Active predicted cases: ${summary.predictedCases}`
+          : '',
         `Total Districts: ${metrics.totalDistricts}`,
         `High Risk Districts: ${metrics.highRiskDistricts}`,
         `Predicted Cases: ${metrics.predictedCases}`,
@@ -167,14 +171,16 @@ export default function Dashboard() {
                 height="360px"
                 selectedId={selectedDistrict?.id}
                 onSelect={() => {}}
-                districtData={generated ? districts.map((d) => adjustDistrictRecord(d, year, month)) : districts}
+                districtData={forecastDistricts}
               />
               <div className="absolute bottom-3 left-3 z-[400] rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs shadow">
                 <p className="mb-1 font-semibold text-primary">Risk Legend</p>
                 <div className="space-y-1">
-                  <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-danger" /> High Risk</p>
-                  <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-warning" /> Medium Risk</p>
-                  <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Low Risk</p>
+                  <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-danger" /> Very High</p>
+                  <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-orange-500" /> High</p>
+                  <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-warning" /> Medium</p>
+                  <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Low</p>
+                  <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-sky-500" /> Very Low</p>
                 </div>
               </div>
             </div>

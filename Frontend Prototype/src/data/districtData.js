@@ -457,7 +457,10 @@ export const getDistrictByName = (name) =>
 export const getDistrictById = (id) => districts.find((d) => d.id === id);
 
 export const riskColor = (risk) => {
-  if (risk === 'High' || risk === 'Critical') return '#E74C3C';
+  if (risk === 'Very High' || risk === 'Critical') return '#E74C3C';
+  if (risk === 'High') return '#F97316';
   if (risk === 'Medium') return '#F39C12';
+  if (risk === 'Low') return '#27AE60';
+  if (risk === 'Very Low') return '#3498DB';
   return '#27AE60';
 };

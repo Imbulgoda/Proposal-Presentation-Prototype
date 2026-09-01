@@ -5,7 +5,12 @@ import Navbar from '../components/layout/Navbar';
 import ForecastContextBar from '../components/layout/ForecastContextBar';
 import ExportToolbar from '../components/export/ExportToolbar';
 import { useApp } from '../context/AppContext';
-import { filterByContextDistrict } from '../utils/forecastContextUtils';
+import {
+  filterByContextDistrict,
+  getActiveForecastSummary,
+  getForecastAwareDistricts,
+} from '../utils/forecastContextUtils';
+import { districts } from '../data/districtData';
 
 export default function EarlyWarning() {
   const { alerts, markAlertRead, markAllAlertsRead, forecastContext } = useApp();
@@ -14,10 +19,32 @@ export default function EarlyWarning() {
   const [riskFilter, setRiskFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All Alerts');
   const [detail, setDetail] = useState(null);
+  const summary = getActiveForecastSummary(forecastContext);
 
-  const contextAlerts = generated
-    ? filterByContextDistrict(alerts, 'district', district)
-    : alerts;
+  const contextAlerts = useMemo(() => {
+    const base = generated ? filterByContextDistrict(alerts, 'district', district) : alerts;
+    if (!generated || !summary) return base;
+
+    const forecastDistricts = getForecastAwareDistricts(districts, forecastContext);
+    const byName = Object.fromEntries(forecastDistricts.map((d) => [d.name, d]));
+
+    return base.map((alert) => {
+      const match = byName[alert.district];
+      if (!match) return alert;
+      return {
+        ...alert,
+        risk:
+          match.risk === 'Very High' || match.risk === 'High'
+            ? 'High'
+            : match.risk === 'Medium'
+              ? 'Medium'
+              : 'Low',
+        forecastRisk: match.risk,
+        predictedCases: match.cases,
+        message: `${alert.message} (Forecast ${month} ${year}: ${match.cases} cases, ${match.risk} risk)`,
+      };
+    });
+  }, [alerts, generated, district, forecastContext, summary, month, year]);
 
   const filtered = useMemo(() => {
     return contextAlerts.filter((a) => {
