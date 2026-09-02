@@ -15,6 +15,9 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
+/** Component 1 prototype (Next.js) — run `npm run dev:fast` at repo root before opening from the hub. */
+const C1_PROTOTYPE_URL = 'http://localhost:3000';
+
 const components = [
   {
     id: 1,
@@ -39,21 +42,22 @@ const components = [
   },
   {
     id: 2,
-    active: false,
+    active: true,
     icon: Brain,
-    title: 'Trustworthy Explainable AI',
-    subtitle: 'Transparent & Interpretable Predictions',
+    title: 'AI-Assisted Malnutrition Risk & Progress Monitoring',
+    subtitle: 'Child-Level Multimodal Assessment & Longitudinal Tracking',
     description:
-      'Provides transparent and interpretable AI predictions to help healthcare professionals understand the factors influencing malnutrition risk.',
+      'Multimodal early detection of paediatric malnutrition type and severity, with visit-to-visit risk velocity, progress states, and clinical review workflows.',
     capabilities: [
-      'Explainable AI',
-      'Model Transparency',
-      'Prediction Interpretation',
-      'Trust Analysis',
+      'Multimodal Risk Assessment',
+      'Longitudinal Progress Monitoring',
+      'Risk Velocity & Progress States',
+      'Clinical Alerts & Follow-Up',
+      'AI-Assisted Review Support',
     ],
-    status: 'COMING SOON',
-    action: 'View Component',
-    to: '/component/trustworthy-xai',
+    status: 'ACTIVE',
+    action: 'Open Prototype',
+    to: C1_PROTOTYPE_URL,
   },
   {
     id: 3,
@@ -226,16 +230,29 @@ export default function ResearchHome() {
                     ))}
                   </ul>
 
-                  <Link
-                    to={c.to}
-                    className={`mt-5 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
-                      c.active
-                        ? 'bg-secondary text-white shadow-md shadow-secondary/25 hover:opacity-95'
-                        : 'border border-slate-200 bg-white text-primary hover:bg-slate-50'
-                    }`}
-                  >
-                    {c.action} <ArrowRight size={16} />
-                  </Link>
+                  {c.to.startsWith('http') ? (
+                    <a
+                      href={c.to}
+                      className={`mt-5 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
+                        c.active
+                          ? 'bg-secondary text-white shadow-md shadow-secondary/25 hover:opacity-95'
+                          : 'border border-slate-200 bg-white text-primary hover:bg-slate-50'
+                      }`}
+                    >
+                      {c.action} <ArrowRight size={16} />
+                    </a>
+                  ) : (
+                    <Link
+                      to={c.to}
+                      className={`mt-5 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
+                        c.active
+                          ? 'bg-secondary text-white shadow-md shadow-secondary/25 hover:opacity-95'
+                          : 'border border-slate-200 bg-white text-primary hover:bg-slate-50'
+                      }`}
+                    >
+                      {c.action} <ArrowRight size={16} />
+                    </Link>
+                  )}
                 </article>
               );
             })}
