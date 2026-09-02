@@ -1,0 +1,428 @@
+// Simulated prototype records — not real patient data.
+
+function buildRiskFactors({ childId, ageMonths, sex, district, factors }) {
+  const prefix = childId.toLowerCase();
+  return [
+    ...factors.map((factor, index) => ({
+      id: `${prefix}-rf-${String(index + 1).padStart(3, '0')}`,
+      source: 'Simulated explainability output',
+      ...factor,
+    })),
+    {
+      id: `${prefix}-rf-age`,
+      name: 'Age',
+      category: 'Demographic',
+      currentValue: `${ageMonths} months`,
+      impactScore: 0.08,
+      impactLevel: 'Low',
+      actionable: false,
+      reason: 'Age is immutable and must not be changed by the counterfactual engine.',
+      source: 'Child profile',
+    },
+    {
+      id: `${prefix}-rf-sex`,
+      name: 'Sex',
+      category: 'Demographic',
+      currentValue: sex,
+      impactScore: 0.05,
+      impactLevel: 'Low',
+      actionable: false,
+      reason: 'Sex is immutable and must remain fixed during counterfactual generation.',
+      source: 'Child profile',
+    },
+    {
+      id: `${prefix}-rf-district`,
+      name: 'District',
+      category: 'Demographic',
+      currentValue: district,
+      impactScore: 0.04,
+      impactLevel: 'Low',
+      actionable: false,
+      reason: 'District is a contextual constraint and must not be directly changed by the counterfactual engine.',
+      source: 'Child profile',
+    },
+  ];
+}
+
+export const interventionChildren = [
+  {
+    childId: 'CH-001',
+    ageMonths: 18,
+    sex: 'Male',
+    district: 'Kandy',
+    condition: 'Underweight',
+    severity: 'Moderate',
+    riskLevel: 'High',
+    probability: 87,
+    interventionStatus: 'Needs Intervention',
+    feasibilityContext: {
+      householdResourceLevel: 'Low',
+      foodAffordability: 'Limited',
+      clinicAccess: 'Good',
+      localFoodAvailability: 'Moderate',
+      programmeEligibility: true,
+      caregiverAvailability: 'Moderate',
+      sanitationContext: 'Needs Improvement',
+    },
+    riskFactors: buildRiskFactors({
+      childId: 'CH-001',
+      ageMonths: 18,
+      sex: 'Male',
+      district: 'Kandy',
+      factors: [
+        {
+          name: 'Dietary Diversity', category: 'Dietary', currentValue: 'Low', impactScore: 0.31,
+          impactLevel: 'High', actionable: true,
+          reason: 'Dietary diversity can potentially be improved through age-appropriate and affordable food choices.',
+        },
+        {
+          name: 'Clinic Follow-up', category: 'Clinical Follow-up', currentValue: 'Irregular', impactScore: 0.18,
+          impactLevel: 'Medium', actionable: true,
+          reason: 'Clinic attendance can be improved when services are accessible.',
+        },
+        {
+          name: 'Sanitation Practice', category: 'WASH / Sanitation', currentValue: 'Needs Improvement', impactScore: 0.12,
+          impactLevel: 'Medium', actionable: true,
+          reason: 'Household sanitation-related practices may be modifiable.',
+        },
+        {
+          name: 'Household Resource Level', category: 'Socioeconomic', currentValue: 'Low', impactScore: 0.10,
+          impactLevel: 'Medium', actionable: false,
+          reason: 'Immediate household economic status should not be treated as a directly changeable intervention feature.',
+        },
+      ],
+    }),
+  },
+  {
+    childId: 'CH-002',
+    ageMonths: 32,
+    sex: 'Female',
+    district: 'Badulla',
+    condition: 'Stunting',
+    severity: 'Moderate',
+    riskLevel: 'Medium',
+    probability: 68,
+    interventionStatus: 'Review',
+    feasibilityContext: {
+      householdResourceLevel: 'Low',
+      foodAffordability: 'Limited',
+      clinicAccess: 'Limited',
+      localFoodAvailability: 'Moderate',
+      programmeEligibility: true,
+      caregiverAvailability: 'Limited',
+      sanitationContext: 'Needs Improvement',
+    },
+    riskFactors: buildRiskFactors({
+      childId: 'CH-002', ageMonths: 32, sex: 'Female', district: 'Badulla',
+      factors: [
+        {
+          name: 'Meal Frequency', category: 'Feeding Practice', currentValue: 'Below age recommendation', impactScore: 0.27,
+          impactLevel: 'High', actionable: true,
+          reason: 'Meal frequency may be adjusted through caregiver guidance using locally available foods.',
+        },
+        {
+          name: 'Nutrition Counselling', category: 'Feeding Practice', currentValue: 'Not attended recently', impactScore: 0.19,
+          impactLevel: 'Medium', actionable: true,
+          reason: 'Caregiver nutrition counselling can be scheduled through available clinic services.',
+        },
+        {
+          name: 'Clinic Follow-up', category: 'Clinical Follow-up', currentValue: 'Delayed', impactScore: 0.14,
+          impactLevel: 'Medium', actionable: true,
+          reason: 'Follow-up timing may be improved subject to household access and clinic capacity.',
+        },
+        {
+          name: 'Birth History', category: 'Maternal / Child Health', currentValue: 'Low birth weight history', impactScore: 0.11,
+          impactLevel: 'Medium', actionable: false,
+          reason: 'Birth history is fixed clinical context and cannot be changed by an intervention recommendation.',
+        },
+      ],
+    }),
+  },
+  {
+    childId: 'CH-003',
+    ageMonths: 14,
+    sex: 'Male',
+    district: 'Nuwara Eliya',
+    condition: 'Wasting',
+    severity: 'Severe',
+    riskLevel: 'High',
+    probability: 91,
+    interventionStatus: 'Needs Intervention',
+    feasibilityContext: {
+      householdResourceLevel: 'Low',
+      foodAffordability: 'Limited',
+      clinicAccess: 'Difficult',
+      localFoodAvailability: 'Limited',
+      programmeEligibility: true,
+      caregiverAvailability: 'Moderate',
+      sanitationContext: 'Needs Improvement',
+    },
+    riskFactors: buildRiskFactors({
+      childId: 'CH-003', ageMonths: 14, sex: 'Male', district: 'Nuwara Eliya',
+      factors: [
+        {
+          name: 'Complementary Feeding Practice', category: 'Feeding Practice', currentValue: 'Inadequate', impactScore: 0.34,
+          impactLevel: 'High', actionable: true,
+          reason: 'Age-suitable complementary feeding practice may be improved with professional caregiver support.',
+        },
+        {
+          name: 'Clinic Follow-up', category: 'Clinical Follow-up', currentValue: 'Missed', impactScore: 0.25,
+          impactLevel: 'High', actionable: true,
+          reason: 'A missed follow-up can be rescheduled when clinic and transport access are feasible.',
+        },
+        {
+          name: 'Safe Water Practice', category: 'WASH / Sanitation', currentValue: 'Inconsistent', impactScore: 0.17,
+          impactLevel: 'Medium', actionable: true,
+          reason: 'Selected household water-handling practices may be improved through feasible guidance.',
+        },
+        {
+          name: 'Birth History', category: 'Maternal / Child Health', currentValue: 'Preterm history', impactScore: 0.14,
+          impactLevel: 'Medium', actionable: false,
+          reason: 'Preterm birth history is fixed clinical context rather than a changeable feature.',
+        },
+      ],
+    }),
+  },
+  {
+    childId: 'CH-004',
+    ageMonths: 26,
+    sex: 'Female',
+    district: 'Batticaloa',
+    condition: 'Underweight',
+    severity: 'Mild',
+    riskLevel: 'Medium',
+    probability: 61,
+    interventionStatus: 'Review',
+    feasibilityContext: {
+      householdResourceLevel: 'Moderate',
+      foodAffordability: 'Moderate',
+      clinicAccess: 'Good',
+      localFoodAvailability: 'High',
+      programmeEligibility: false,
+      caregiverAvailability: 'High',
+      sanitationContext: 'Moderate',
+    },
+    riskFactors: buildRiskFactors({
+      childId: 'CH-004', ageMonths: 26, sex: 'Female', district: 'Batticaloa',
+      factors: [
+        {
+          name: 'Dietary Diversity', category: 'Dietary', currentValue: 'Limited', impactScore: 0.24,
+          impactLevel: 'High', actionable: true,
+          reason: 'Food-group variety may be improved using suitable and locally available options.',
+        },
+        {
+          name: 'Handwashing Practice', category: 'WASH / Sanitation', currentValue: 'Inconsistent', impactScore: 0.16,
+          impactLevel: 'Medium', actionable: true,
+          reason: 'Selected handwashing practices are potentially modifiable with household guidance.',
+        },
+        {
+          name: 'Nutrition Awareness', category: 'Feeding Practice', currentValue: 'Basic', impactScore: 0.13,
+          impactLevel: 'Medium', actionable: true,
+          reason: 'Nutrition awareness may be strengthened through accessible counselling.',
+        },
+        {
+          name: 'Household Income Context', category: 'Socioeconomic', currentValue: 'Constrained', impactScore: 0.09,
+          impactLevel: 'Low', actionable: false,
+          reason: 'Household income is a feasibility constraint and should not be directly altered by the engine.',
+        },
+      ],
+    }),
+  },
+  {
+    childId: 'CH-005',
+    ageMonths: 20,
+    sex: 'Male',
+    district: 'Monaragala',
+    condition: 'Stunting',
+    severity: 'Moderate',
+    riskLevel: 'High',
+    probability: 84,
+    interventionStatus: 'Needs Intervention',
+    feasibilityContext: {
+      householdResourceLevel: 'Low',
+      foodAffordability: 'Limited',
+      clinicAccess: 'Moderate',
+      localFoodAvailability: 'Limited',
+      programmeEligibility: true,
+      caregiverAvailability: 'Limited',
+      sanitationContext: 'Needs Improvement',
+    },
+    riskFactors: buildRiskFactors({
+      childId: 'CH-005', ageMonths: 20, sex: 'Male', district: 'Monaragala',
+      factors: [
+        {
+          name: 'Meal Frequency', category: 'Feeding Practice', currentValue: 'Low', impactScore: 0.29,
+          impactLevel: 'High', actionable: true,
+          reason: 'Meal frequency may be adjusted with an affordable age-appropriate feeding plan.',
+        },
+        {
+          name: 'Dietary Diversity', category: 'Dietary', currentValue: 'Low', impactScore: 0.23,
+          impactLevel: 'High', actionable: true,
+          reason: 'Dietary variety may be improved within local food availability and household constraints.',
+        },
+        {
+          name: 'Clinic Follow-up', category: 'Clinical Follow-up', currentValue: 'Irregular', impactScore: 0.15,
+          impactLevel: 'Medium', actionable: true,
+          reason: 'Clinic attendance may be improved when travel and service access permit.',
+        },
+        {
+          name: 'Household Resource Level', category: 'Socioeconomic', currentValue: 'Low', impactScore: 0.12,
+          impactLevel: 'Medium', actionable: false,
+          reason: 'Household resources constrain feasibility but are not directly changeable intervention features.',
+        },
+      ],
+    }),
+  },
+  {
+    childId: 'CH-006',
+    ageMonths: 41,
+    sex: 'Female',
+    district: 'Colombo',
+    condition: 'Underweight',
+    severity: 'Mild',
+    riskLevel: 'Low',
+    probability: 34,
+    interventionStatus: 'Stable',
+    feasibilityContext: {
+      householdResourceLevel: 'High',
+      foodAffordability: 'Good',
+      clinicAccess: 'Good',
+      localFoodAvailability: 'High',
+      programmeEligibility: false,
+      caregiverAvailability: 'Good',
+      sanitationContext: 'Adequate',
+    },
+    riskFactors: buildRiskFactors({
+      childId: 'CH-006', ageMonths: 41, sex: 'Female', district: 'Colombo',
+      factors: [
+        {
+          name: 'Food Group Variety', category: 'Dietary', currentValue: 'Moderate', impactScore: 0.15,
+          impactLevel: 'Medium', actionable: true,
+          reason: 'Food-group variety may be refined through practical caregiver guidance.',
+        },
+        {
+          name: 'Clinic Follow-up', category: 'Clinical Follow-up', currentValue: 'Occasional', impactScore: 0.10,
+          impactLevel: 'Low', actionable: true,
+          reason: 'Routine follow-up timing can potentially be improved.',
+        },
+        {
+          name: 'Responsive Feeding Practice', category: 'Feeding Practice', currentValue: 'Partially followed', impactScore: 0.09,
+          impactLevel: 'Low', actionable: true,
+          reason: 'Responsive feeding practices may be supported through counselling.',
+        },
+        {
+          name: 'Birth History', category: 'Maternal / Child Health', currentValue: 'Low birth weight history', impactScore: 0.08,
+          impactLevel: 'Low', actionable: false,
+          reason: 'Recorded birth history is fixed and cannot be modified by counterfactual generation.',
+        },
+      ],
+    }),
+  },
+  {
+    childId: 'CH-007',
+    ageMonths: 11,
+    sex: 'Female',
+    district: 'Ampara',
+    condition: 'Wasting',
+    severity: 'Moderate',
+    riskLevel: 'High',
+    probability: 89,
+    interventionStatus: 'Needs Intervention',
+    feasibilityContext: {
+      householdResourceLevel: 'Low',
+      foodAffordability: 'Limited',
+      clinicAccess: 'Difficult',
+      localFoodAvailability: 'Moderate',
+      programmeEligibility: true,
+      caregiverAvailability: 'Limited',
+      sanitationContext: 'Needs Improvement',
+    },
+    riskFactors: buildRiskFactors({
+      childId: 'CH-007', ageMonths: 11, sex: 'Female', district: 'Ampara',
+      factors: [
+        {
+          name: 'Complementary Feeding Practice', category: 'Feeding Practice', currentValue: 'Delayed', impactScore: 0.33,
+          impactLevel: 'High', actionable: true,
+          reason: 'Age-appropriate complementary feeding may be supported after professional assessment.',
+        },
+        {
+          name: 'Clinic Follow-up', category: 'Clinical Follow-up', currentValue: 'Missed', impactScore: 0.24,
+          impactLevel: 'High', actionable: true,
+          reason: 'A follow-up visit may be arranged where clinic access is feasible.',
+        },
+        {
+          name: 'Sanitation Practice', category: 'WASH / Sanitation', currentValue: 'Needs Improvement', impactScore: 0.16,
+          impactLevel: 'Medium', actionable: true,
+          reason: 'Selected sanitation practices may be improved through household support.',
+        },
+        {
+          name: 'Birth History', category: 'Maternal / Child Health', currentValue: 'Growth restriction history', impactScore: 0.13,
+          impactLevel: 'Medium', actionable: false,
+          reason: 'Birth history is protected clinical context and must remain fixed.',
+        },
+      ],
+    }),
+  },
+  {
+    childId: 'CH-008',
+    ageMonths: 36,
+    sex: 'Male',
+    district: 'Kurunegala',
+    condition: 'Stunting',
+    severity: 'Mild',
+    riskLevel: 'Medium',
+    probability: 57,
+    interventionStatus: 'Review',
+    feasibilityContext: {
+      householdResourceLevel: 'Moderate',
+      foodAffordability: 'Moderate',
+      clinicAccess: 'Good',
+      localFoodAvailability: 'High',
+      programmeEligibility: false,
+      caregiverAvailability: 'Moderate',
+      sanitationContext: 'Adequate',
+    },
+    riskFactors: buildRiskFactors({
+      childId: 'CH-008', ageMonths: 36, sex: 'Male', district: 'Kurunegala',
+      factors: [
+        {
+          name: 'Meal Frequency', category: 'Feeding Practice', currentValue: 'Inconsistent', impactScore: 0.22,
+          impactLevel: 'High', actionable: true,
+          reason: 'Meal scheduling may be improved with a feasible caregiver plan.',
+        },
+        {
+          name: 'Nutrition Counselling', category: 'Feeding Practice', currentValue: 'Not attended', impactScore: 0.17,
+          impactLevel: 'Medium', actionable: true,
+          reason: 'Counselling access may provide practical nutrition guidance for the caregiver.',
+        },
+        {
+          name: 'Safe Water Practice', category: 'WASH / Sanitation', currentValue: 'Variable', impactScore: 0.11,
+          impactLevel: 'Medium', actionable: true,
+          reason: 'Selected water-handling practices may be improved if household resources allow.',
+        },
+        {
+          name: 'Household Income Context', category: 'Socioeconomic', currentValue: 'Moderate constraint', impactScore: 0.10,
+          impactLevel: 'Medium', actionable: false,
+          reason: 'Income is used as a feasibility constraint, not as a directly changeable feature.',
+        },
+      ],
+    }),
+  },
+];
+
+export const interventionSummary = {
+  childrenReviewed: 24,
+  highRiskChildren: 8,
+  plansGenerated: 17,
+  highFeasibilityRecommendations: 13,
+};
+
+export const interventionWorkflow = [
+  'Select Child',
+  'Review Prediction',
+  'Identify Actionable Factors',
+  'Generate Counterfactuals',
+  'Apply Feasibility Rules',
+  'Rank Interventions',
+  'Generate Intervention Plan',
+];
