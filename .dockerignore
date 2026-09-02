@@ -1,0 +1,42 @@
+# Git / IDE
+.git
+.gitignore
+.cursor
+agent-transcripts
+.vscode
+
+# Python
+.venv
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+.mypy_cache
+
+# Node / Next.js (root-context builds must not ship local installs)
+node_modules
+**/node_modules
+.next
+**/.next
+**/*.tsbuildinfo
+**/playwright-report
+**/test-results
+npm-debug.log*
+yarn-error.log*
+
+# Frontend (client) is built from client/ context — skip for API/inference/worker
+client
+
+# Docs / CI not needed in runtime images
+docs
+.github
+**/*.md
+!packages/contracts/**/*.md
+
+# ML artifacts (mounted at runtime or baked in inference only via COPY)
+ml/artifacts
+
+# Env / secrets
+.env
+.env.*

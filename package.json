@@ -1,0 +1,19 @@
+{
+  "name": "component-1",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Child Nutrition Intelligence Platform — monorepo root",
+  "scripts": {
+    "dev": "npm run dev --prefix client",
+    "dev:ui": "powershell -ExecutionPolicy Bypass -File scripts/dev-ui.ps1",
+    "dev:backend": "powershell -ExecutionPolicy Bypass -File scripts/dev-backend.ps1",
+    "dev:fast": "powershell -ExecutionPolicy Bypass -File scripts/dev-local.ps1",
+    "dev:cleanup": "powershell -ExecutionPolicy Bypass -File scripts/dev-cleanup.ps1",
+    "build": "npm run build --prefix client",
+    "start": "npm run start --prefix client",
+    "lint": "npm run lint --prefix client",
+    "typecheck": "npm run typecheck --prefix client",
+    "test": "npm run test --prefix client",
+    "test:e2e": "npm run test:e2e --prefix client"
+  }
+}

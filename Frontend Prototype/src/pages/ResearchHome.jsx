@@ -39,21 +39,22 @@ const components = [
   },
   {
     id: 2,
-    active: false,
+    active: true,
     icon: Brain,
-    title: 'Trustworthy Explainable AI',
-    subtitle: 'Transparent & Interpretable Predictions',
+    title: 'AI-Assisted Malnutrition Risk & Progress Monitoring',
+    subtitle: 'Child-Level Multimodal Assessment & Longitudinal Tracking',
     description:
-      'Provides transparent and interpretable AI predictions to help healthcare professionals understand the factors influencing malnutrition risk.',
+      'Multimodal early detection of paediatric malnutrition type and severity, with visit-to-visit risk velocity, progress states, and clinical review workflows.',
     capabilities: [
-      'Explainable AI',
-      'Model Transparency',
-      'Prediction Interpretation',
-      'Trust Analysis',
+      'Multimodal Risk Assessment',
+      'Longitudinal Progress Monitoring',
+      'Risk Velocity & Progress States',
+      'Clinical Alerts & Follow-Up',
+      'AI-Assisted Review Support',
     ],
-    status: 'COMING SOON',
-    action: 'View Component',
-    to: '/component/trustworthy-xai',
+    status: 'ACTIVE',
+    action: 'Open Prototype',
+    to: '/component/child-monitoring/dashboard',
   },
   {
     id: 3,
@@ -74,24 +75,24 @@ const components = [
     to: '/component/privacy-recalibration',
   },
   {
-    id: 4,
-    active: true,
-    icon: Stethoscope,
-    title: 'Feasible Personalized Counterfactual Intervention',
-    subtitle: 'Child-Level Intervention & Clinical Decision Support',
-    description:
-      'Transforms malnutrition risk predictions and explainable factors into feasible, personalized intervention options for healthcare workers.',
-    capabilities: [
-      'Counterfactual Intervention Generation',
-      'Actionable Risk Factor Analysis',
-      'Sri Lanka-Specific Feasibility Filtering',
-      'Prioritized Intervention Planning',
-      'Personalized Intervention Cards',
-    ],
-    status: 'ACTIVE',
-    action: 'Open Prototype',
-    to: '/component/personalized-nutrition',
-  },
+  id: 4,
+  active: true,
+  icon: Stethoscope,
+  title: 'Feasible Personalized Counterfactual Intervention',
+  subtitle: 'Child-Level Intervention & Clinical Decision Support',
+  description:
+    'Transforms malnutrition risk predictions and explainable factors into feasible, personalized intervention options for healthcare workers.',
+  capabilities: [
+    'Counterfactual Intervention Generation',
+    'Actionable Risk Factor Analysis',
+    'Sri Lanka-Specific Feasibility Filtering',
+    'Prioritized Intervention Planning',
+    'Personalized Intervention Cards',
+  ],
+  status: 'ACTIVE',
+  action: 'Open Prototype',
+  to: '/component/personalized-nutrition',
+},
 ];
 
 const workflow = [
@@ -227,16 +228,29 @@ export default function ResearchHome() {
                     ))}
                   </ul>
 
-                  <Link
-                    to={c.to}
-                    className={`mt-5 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
-                      c.active
-                        ? 'bg-secondary text-white shadow-md shadow-secondary/25 hover:opacity-95'
-                        : 'border border-slate-200 bg-white text-primary hover:bg-slate-50'
-                    }`}
-                  >
-                    {c.action} <ArrowRight size={16} />
-                  </Link>
+                  {c.to.startsWith('http') ? (
+                    <a
+                      href={c.to}
+                      className={`mt-5 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
+                        c.active
+                          ? 'bg-secondary text-white shadow-md shadow-secondary/25 hover:opacity-95'
+                          : 'border border-slate-200 bg-white text-primary hover:bg-slate-50'
+                      }`}
+                    >
+                      {c.action} <ArrowRight size={16} />
+                    </a>
+                  ) : (
+                    <Link
+                      to={c.to}
+                      className={`mt-5 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
+                        c.active
+                          ? 'bg-secondary text-white shadow-md shadow-secondary/25 hover:opacity-95'
+                          : 'border border-slate-200 bg-white text-primary hover:bg-slate-50'
+                      }`}
+                    >
+                      {c.action} <ArrowRight size={16} />
+                    </Link>
+                  )}
                 </article>
               );
             })}

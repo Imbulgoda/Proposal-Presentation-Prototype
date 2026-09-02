@@ -1,0 +1,58 @@
+{
+  "disclaimer": "Synthetic demonstration context derived from publicly reported Sri Lanka macro indicators and major events (2021–2025). For research prototype alignment only — not live feeds.",
+  "schema_version": "sl-context-2026-001",
+  "source_note": "Illustrative annual snapshots for visit-date linkage. Replace with approved research datasets or Component 2 contextual feeds.",
+  "years": {
+    "2021": {
+      "economic_growth_rate_pct": 3.5,
+      "food_price_inflation_pct": 11.0,
+      "food_price_index": 111.0,
+      "economy_stress_level": "moderate",
+      "events": [
+        { "type": "pandemic", "label": "COVID-19 public health measures", "severity": "high" },
+        { "type": "economic", "label": "Import restrictions / currency pressure", "severity": "moderate" }
+      ]
+    },
+    "2022": {
+      "economic_growth_rate_pct": -7.8,
+      "food_price_inflation_pct": 94.9,
+      "food_price_index": 216.4,
+      "economy_stress_level": "severe",
+      "events": [
+        { "type": "economic", "label": "Sri Lanka economic crisis / high inflation", "severity": "severe" },
+        { "type": "disaster", "label": "Monsoon flooding (selected districts)", "severity": "moderate" },
+        { "type": "outbreak", "label": "Dengue transmission season", "severity": "moderate" }
+      ]
+    },
+    "2023": {
+      "economic_growth_rate_pct": -2.3,
+      "food_price_inflation_pct": 17.4,
+      "food_price_index": 254.0,
+      "economy_stress_level": "elevated",
+      "events": [
+        { "type": "economic", "label": "Post-crisis recovery / elevated food costs", "severity": "moderate" },
+        { "type": "outbreak", "label": "Dengue alerts in multiple provinces", "severity": "moderate" }
+      ]
+    },
+    "2024": {
+      "economic_growth_rate_pct": 4.5,
+      "food_price_inflation_pct": 1.3,
+      "food_price_index": 257.3,
+      "economy_stress_level": "moderate",
+      "events": [
+        { "type": "economic", "label": "Stabilising macro conditions with residual food-price sensitivity", "severity": "low" },
+        { "type": "disaster", "label": "Localized flood events", "severity": "low" }
+      ]
+    },
+    "2025": {
+      "economic_growth_rate_pct": 4.0,
+      "food_price_inflation_pct": 3.5,
+      "food_price_index": 266.3,
+      "economy_stress_level": "low",
+      "events": [
+        { "type": "economic", "label": "Gradual recovery in household purchasing power", "severity": "low" }
+      ]
+    }
+  },
+  "default_year": "2024"
+}

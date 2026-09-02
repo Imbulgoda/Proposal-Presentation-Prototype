@@ -1,0 +1,47 @@
+{
+  "disclaimer": "Synthetic Demonstration Data. Not for clinical use.",
+  "organizations": [
+    {
+      "code": "MOH-DEMO",
+      "name": "Ministry of Health Demonstration Network",
+      "type": "government"
+    }
+  ],
+  "facilities": [
+    {
+      "code": "CCHC-04",
+      "name": "Colombo Child Health Clinic",
+      "district": "Colombo",
+      "type": "clinic",
+      "organization_code": "MOH-DEMO"
+    },
+    {
+      "code": "KMCC-01",
+      "name": "Kandy Maternal and Child Clinic",
+      "district": "Kandy",
+      "type": "clinic",
+      "organization_code": "MOH-DEMO"
+    },
+    {
+      "code": "GCNU-02",
+      "name": "Galle Community Nutrition Unit",
+      "district": "Galle",
+      "type": "community_unit",
+      "organization_code": "MOH-DEMO"
+    }
+  ],
+  "users": [
+    {
+      "email": "doctor@gmail.com",
+      "full_name": "Dr. Sandun Jayawardena",
+      "role": "doctor",
+      "facility_code": "CCHC-04"
+    },
+    {
+      "email": "doctor.kandy@demo.local",
+      "full_name": "Dr. Harsha Wijesinghe",
+      "role": "doctor",
+      "facility_code": "KMCC-01"
+    }
+  ]
+}

@@ -13,6 +13,7 @@ import FeasibilityAnalysis from './pages/FeasibilityAnalysis';
 import InterventionRanking from './pages/InterventionRanking';
 import InterventionPlan from './pages/InterventionPlan';
 import PrivacyRecalibration from './pages/PrivacyRecalibration';
+import C1App from './c1/C1App';
 import Dashboard from './pages/Dashboard';
 import Forecast from './pages/Forecast';
 import GISMap from './pages/GISMap';
@@ -124,7 +125,15 @@ function AppRoutes() {
       />
 
       <Route
-        path="/"
+        path="/component/child-monitoring/*"
+        element={
+          <ProtectedRoute>
+            <C1App />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         element={
           <ProtectedRoute>
             <MainLayout />
