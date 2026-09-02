@@ -116,6 +116,39 @@ export function TrendChart({
   );
 }
 
+function paddedExtent(values: number[], minSpan = 0.08): [number, number] {
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const center = (min + max) / 2;
+  let span = max - min;
+  if (!Number.isFinite(span) || span < minSpan) {
+    return [center - minSpan / 2, center + minSpan / 2];
+  }
+  const pad = span * 0.18;
+  return [min - pad, max + pad];
+}
+
+function labelPlacement(
+  screenX: number,
+  screenY: number,
+  index: number,
+  total: number,
+  centroidX: number,
+  centroidY: number,
+  compact: boolean,
+): { lx: number; ly: number; angle: number } {
+  const labelDist = compact ? 24 : 30;
+  const dx = screenX - centroidX;
+  const dy = screenY - centroidY;
+  const dist = Math.hypot(dx, dy);
+  const angle = dist > 3 ? Math.atan2(dy, dx) : (2 * Math.PI * index) / total - Math.PI / 2;
+  return {
+    lx: screenX + Math.cos(angle) * labelDist,
+    ly: screenY + Math.sin(angle) * labelDist,
+    angle,
+  };
+}
+
 export function LatentTrajectory({
   visits,
   warning,
@@ -140,15 +173,25 @@ export function LatentTrajectory({
   }
   const xs = pts.map((p) => p.projection!.x);
   const ys = pts.map((p) => p.projection!.y);
-  const minX = Math.min(...xs, -1);
-  const maxX = Math.max(...xs, 1);
-  const minY = Math.min(...ys, -1);
-  const maxY = Math.max(...ys, 1);
+  const [minX, maxX] = paddedExtent(xs);
+  const [minY, maxY] = paddedExtent(ys);
   const height = compact ? 180 : 300;
+  const plotLeft = 48;
+  const plotRight = 552;
+  const plotTop = compact ? 28 : 36;
   const plotBottom = compact ? 150 : 260;
-  const plotSpan = compact ? 120 : 200;
-  const sx = (x: number) => ((x - minX) / (maxX - minX || 1)) * 520 + 40;
+  const plotWidth = plotRight - plotLeft;
+  const plotSpan = plotBottom - plotTop;
+  const sx = (x: number) => ((x - minX) / (maxX - minX || 1)) * plotWidth + plotLeft;
   const sy = (y: number) => plotBottom - ((y - minY) / (maxY - minY || 1)) * plotSpan;
+
+  const screenPts = pts.map((p) => ({
+    ...p,
+    x: sx(p.projection!.x),
+    y: sy(p.projection!.y),
+  }));
+  const centroidX = screenPts.reduce((sum, p) => sum + p.x, 0) / screenPts.length;
+  const centroidY = screenPts.reduce((sum, p) => sum + p.y, 0) / screenPts.length;
 
   return (
     <div className={className}>
@@ -168,27 +211,84 @@ export function LatentTrajectory({
           </marker>
         </defs>
         <rect width="600" height={height} fill={`url(#${gridId})`} />
-        {pts.map((p, i) => {
-          const x = sx(p.projection!.x);
-          const y = sy(p.projection!.y);
-          const next = pts[i + 1];
+        <rect
+          x={plotLeft}
+          y={plotTop}
+          width={plotWidth}
+          height={plotSpan}
+          fill="none"
+          stroke="#cbd5e1"
+          strokeWidth="1"
+          rx="6"
+        />
+        {!compact ? (
+          <>
+            <text x={plotLeft + plotWidth / 2} y={plotBottom + 18} textAnchor="middle" fontSize="10" fill="#64748b">
+              Projection axis 1
+            </text>
+            <text
+              x={plotLeft - 10}
+              y={plotTop + plotSpan / 2}
+              textAnchor="middle"
+              fontSize="10"
+              fill="#64748b"
+              transform={`rotate(-90 ${plotLeft - 10} ${plotTop + plotSpan / 2})`}
+            >
+              Projection axis 2
+            </text>
+          </>
+        ) : null}
+        {screenPts.map((p, i) => {
+          const next = screenPts[i + 1];
+          const isFirst = i === 0;
+          const isLast = i === screenPts.length - 1;
+          const { lx, ly } = labelPlacement(p.x, p.y, i, screenPts.length, centroidX, centroidY, compact);
+          const status = p.prediction?.status ? formatStatus(p.prediction.status) : null;
+          const tooltip = [
+            `Visit ${p.visit_number}`,
+            formatClinicalDate(p.visit_date),
+            status,
+            p.prediction?.risk != null ? `Score: ${formatPercent(p.prediction.risk)}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ");
           return (
             <g key={p.id}>
               {next ? (
                 <line
-                  x1={x}
-                  y1={y}
-                  x2={sx(next.projection!.x)}
-                  y2={sy(next.projection!.y)}
+                  x1={p.x}
+                  y1={p.y}
+                  x2={next.x}
+                  y2={next.y}
                   stroke="#2563eb"
                   strokeWidth="2"
+                  strokeOpacity={0.85}
                   markerEnd={`url(#${arrowId})`}
                 />
               ) : null}
-              <circle cx={x} cy={y} r={compact ? 5 : 7} fill="#2563eb">
-                <title>{`V${p.visit_number} · ${formatClinicalDate(p.visit_date)}`}</title>
+              {Math.hypot(lx - p.x, ly - p.y) > 12 ? (
+                <line x1={p.x} y1={p.y} x2={lx} y2={ly} stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 2" />
+              ) : null}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={compact ? (isLast ? 6 : 5) : isLast ? 8 : 7}
+                fill={isFirst ? "#fff" : "#2563eb"}
+                stroke="#2563eb"
+                strokeWidth={isFirst ? 2.5 : 1.5}
+              >
+                <title>{tooltip}</title>
               </circle>
-              <text x={x + 8} y={y - 6} fontSize={compact ? "10" : "11"} fill="#0f2744">
+              <text
+                x={lx}
+                y={ly}
+                fontSize={compact ? "10" : "11"}
+                fill="#0f2744"
+                fontWeight={isLast ? 600 : 400}
+                textAnchor="middle"
+                dominantBaseline="middle"
+              >
+                <title>{tooltip}</title>
                 V{p.visit_number}
               </text>
             </g>
@@ -197,8 +297,8 @@ export function LatentTrajectory({
       </svg>
       {!compact ? (
         <p className="mt-3 text-xs leading-relaxed text-[#64748b]">
-          This visualization represents changes in the model&apos;s learned multidimensional representation. It does not
-          independently determine clinical status.
+          Arrows follow visit order (earliest to latest). This visualization represents changes in the model&apos;s
+          learned multidimensional representation. It does not independently determine clinical status.
         </p>
       ) : null}
     </div>

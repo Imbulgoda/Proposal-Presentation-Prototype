@@ -4,13 +4,18 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   Bell,
+  ChevronRight,
   LayoutDashboard,
   LogOut,
+  Minus,
+  TrendingDown,
   Users,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, PRODUCT } from "@/lib/api";
+import { formatClinicalDate } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { CommandPalette } from "./command-palette";
 import { cn } from "@/lib/utils";
@@ -37,7 +42,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const user = useQuery({ queryKey: ["me"], queryFn: () => api<User>("/auth/me") });
   const notes = useQuery({
     queryKey: ["notifications"],
-    queryFn: () => api<{ items: { id: string; title: string; severity: string; created_at: string }[] }>("/notifications"),
+    queryFn: () =>
+      api<{
+        items: {
+          id: string;
+          title: string;
+          body?: string | null;
+          severity: string;
+          created_at: string;
+          read_at?: string | null;
+        }[];
+      }>("/notifications"),
   });
   const logout = useMutation({
     mutationFn: () => api("/auth/logout", { method: "POST" }),
@@ -118,37 +133,211 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NotificationMenu({ items }: { items: { id: string; title: string; severity: string; created_at: string }[] }) {
+function NotificationMenu({
+  items,
+}: {
+  items: {
+    id: string;
+    title: string;
+    body?: string | null;
+    severity: string;
+    created_at: string;
+    read_at?: string | null;
+  }[];
+}) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const critical = items.filter((i) => i.severity === "HIGH" || i.severity === "URGENT");
+  const criticalIds = new Set(critical.map((i) => i.id));
+  const today = items.filter((i) => !criticalIds.has(i.id));
+  const unread = items.filter((i) => !i.read_at).length;
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={rootRef}>
       <button
         type="button"
-        className="relative rounded-lg p-2 text-white/90 hover:bg-white/10"
+        className={cn(
+          "relative rounded-xl p-2.5 transition",
+          open ? "bg-white/15 text-white" : "text-white/90 hover:bg-white/10",
+        )}
         onClick={() => setOpen((v) => !v)}
         aria-label="Notifications"
+        aria-expanded={open}
       >
         <Bell className="h-5 w-5" />
-        {items.length > 0 ? <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-clinical-danger" /> : null}
+        {unread > 0 ? (
+          <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-clinical-danger px-1 text-[10px] font-bold text-white ring-2 ring-[#0A2748]">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        ) : null}
       </button>
       {open ? (
-        <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-line bg-white p-3 shadow-card">
-          <p className="px-2 text-xs font-semibold uppercase text-muted">Critical</p>
-          {critical.length === 0 ? <p className="px-2 py-3 text-sm text-muted">No critical alerts require your attention.</p> : null}
-          {critical.slice(0, 4).map((n) => (
-            <p key={n.id} className="rounded-lg px-2 py-2 text-sm hover:bg-canvas">
-              {n.title}
-            </p>
-          ))}
-          <p className="mt-2 px-2 text-xs font-semibold uppercase text-muted">Today</p>
-          {items.slice(0, 6).map((n) => (
-            <p key={n.id} className="rounded-lg px-2 py-2 text-sm hover:bg-canvas">
-              {n.title}
-            </p>
-          ))}
+        <div className="absolute right-0 z-50 mt-2 w-[22rem] overflow-hidden rounded-2xl border border-[#dbe6f0] bg-white text-ink shadow-[0_20px_48px_-20px_rgba(10,39,72,0.35)]">
+          <div className="border-b border-[#e8eef5] bg-gradient-to-br from-[#f7faff] to-white px-4 py-3.5">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-[#0f2744]">Notifications</p>
+                <p className="text-xs text-muted">
+                  {unread > 0 ? `${unread} unread` : "You're up to date"}
+                </p>
+              </div>
+              <span className="rounded-full bg-[#0A2748] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
+                {items.length} total
+              </span>
+            </div>
+          </div>
+
+          <div className="max-h-[min(24rem,70vh)] overflow-y-auto p-2">
+            <NotificationSection
+              label="Critical"
+              empty="No critical alerts require your attention."
+              items={critical.slice(0, 4)}
+            />
+            <NotificationSection
+              label="Today"
+              empty="No other notifications today."
+              items={today.slice(0, 6)}
+              className={critical.length > 0 ? "mt-3 border-t border-[#eef2f7] pt-3" : undefined}
+            />
+          </div>
+
+          <div className="border-t border-[#e8eef5] bg-[#f8fafc] px-3 py-2.5">
+            <Link
+              href="/alerts"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-[#0E3A67] transition hover:bg-white"
+            >
+              View all alerts
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </div>
         </div>
       ) : null}
     </div>
+  );
+}
+
+function NotificationSection({
+  label,
+  empty,
+  items,
+  className,
+}: {
+  label: string;
+  empty: string;
+  items: { id: string; title: string; body?: string | null; severity: string; created_at: string; read_at?: string | null }[];
+  className?: string;
+}) {
+  return (
+    <section className={className}>
+      <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]">{label}</p>
+      {items.length === 0 ? (
+        <p className="rounded-xl bg-[#f8fafc] px-3 py-4 text-center text-xs leading-relaxed text-muted">{empty}</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {items.map((n) => (
+            <NotificationRow key={n.id} item={n} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function notificationVisuals(title: string, severity: string) {
+  const lower = title.toLowerCase();
+  if (lower.includes("relapse") || lower.includes("regression")) {
+    return {
+      Icon: TrendingDown,
+      tone: "bg-red-50/80 text-red-900",
+      badge: "bg-red-100 text-red-800",
+      label: "Relapse",
+    };
+  }
+  if (lower.includes("deterioration")) {
+    return {
+      Icon: AlertTriangle,
+      tone: "bg-red-50/70 text-red-900",
+      badge: "bg-red-100 text-red-800",
+      label: "Deterioration",
+    };
+  }
+  if (lower.includes("stagnation")) {
+    return {
+      Icon: Minus,
+      tone: "bg-amber-50/80 text-amber-950",
+      badge: "bg-amber-100 text-amber-900",
+      label: "Stagnation",
+    };
+  }
+  if (severity === "HIGH" || severity === "URGENT") {
+    return {
+      Icon: AlertTriangle,
+      tone: "bg-red-50/70 text-red-900",
+      badge: "bg-red-100 text-red-800",
+      label: "High",
+    };
+  }
+  return {
+    Icon: Bell,
+    tone: "bg-[#eff6ff]/80 text-[#0f2744]",
+    badge: "bg-[#dbeafe] text-[#1e40af]",
+    label: "Update",
+  };
+}
+
+function NotificationRow({
+  item,
+}: {
+  item: { id: string; title: string; body?: string | null; severity: string; created_at: string; read_at?: string | null };
+}) {
+  const { Icon, tone, badge, label } = notificationVisuals(item.title, item.severity);
+  const unread = !item.read_at;
+
+  return (
+    <li>
+      <div
+        className={cn(
+          "group flex gap-3 rounded-xl border border-transparent px-3 py-2.5 transition hover:border-[#e2eaf3] hover:shadow-sm",
+          tone,
+          unread && "ring-1 ring-inset ring-black/[0.03]",
+        )}
+      >
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/80 shadow-sm">
+          <Icon className="h-4 w-4" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className={cn("text-sm leading-snug", unread ? "font-semibold" : "font-medium")}>{item.title}</p>
+            {unread ? <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#0E3A67]" aria-label="Unread" /> : null}
+          </div>
+          {item.body ? <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed opacity-80">{item.body}</p> : null}
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <span className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide", badge)}>
+              {label}
+            </span>
+            <span className="text-[11px] text-muted">
+              {formatClinicalDate(item.created_at, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </div>
+        </div>
+      </div>
+    </li>
   );
 }
