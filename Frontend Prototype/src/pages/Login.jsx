@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Bot, Lock, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
-import { loginC1Doctor, storeC1Session } from '../lib/c1Auth';
 
 const roles = ['MOH Officer', 'Nutrition Officer', 'Administrator', 'Doctor'];
 
@@ -28,18 +27,10 @@ export default function Login() {
     }
 
     if (isDoctor) {
-      setSubmitting(true);
-      try {
-        const session = await loginC1Doctor(username, password);
-        storeC1Session(session.csrf_token);
-        login(username.trim(), role);
-        toast.success(`Welcome, ${session.user?.full_name ?? 'Doctor'}`);
-        navigate('/research-home');
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Clinician login failed');
-      } finally {
-        setSubmitting(false);
-      }
+      sessionStorage.setItem('cnip_csrf', 'demo-csrf-token');
+      login(username.trim(), role);
+      toast.success('Welcome, Doctor');
+      navigate('/research-home');
       return;
     }
 

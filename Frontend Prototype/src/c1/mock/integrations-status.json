@@ -1,0 +1,6 @@
+﻿{
+  "integration_mode": "mock",
+  "c2": { "status": "NOT_CONFIGURED", "configured": false },
+  "c3": { "status": "NOT_CONFIGURED", "configured": false, "pending_events": 0, "failed_events": 0 },
+  "c4": { "status": "NOT_CONFIGURED", "configured": false, "pending_events": 0, "failed_events": 0 }
+}

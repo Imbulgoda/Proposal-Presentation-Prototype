@@ -14,7 +14,6 @@ import {
   Stethoscope,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { buildC1EntryUrl } from '../lib/c1Auth';
 
 const components = [
   {
@@ -55,8 +54,7 @@ const components = [
     ],
     status: 'ACTIVE',
     action: 'Open Prototype',
-    to: '/auth/hub',
-    externalC1: true,
+    to: '/component/child-monitoring/dashboard',
   },
   {
     id: 3,
@@ -182,7 +180,6 @@ export default function ResearchHome() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {components.map((c) => {
               const Icon = c.icon;
-              const target = c.externalC1 ? buildC1EntryUrl() : c.to;
               return (
                 <article
                   key={c.id}
@@ -230,9 +227,9 @@ export default function ResearchHome() {
                     ))}
                   </ul>
 
-                  {target.startsWith('http') ? (
+                  {c.to.startsWith('http') ? (
                     <a
-                      href={target}
+                      href={c.to}
                       className={`mt-5 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
                         c.active
                           ? 'bg-secondary text-white shadow-md shadow-secondary/25 hover:opacity-95'
@@ -243,7 +240,7 @@ export default function ResearchHome() {
                     </a>
                   ) : (
                     <Link
-                      to={target}
+                      to={c.to}
                       className={`mt-5 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
                         c.active
                           ? 'bg-secondary text-white shadow-md shadow-secondary/25 hover:opacity-95'
