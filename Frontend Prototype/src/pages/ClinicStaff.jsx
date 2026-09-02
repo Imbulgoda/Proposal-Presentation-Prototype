@@ -14,6 +14,7 @@ import { clinicStaffDetails } from '../data/clinicData';
 import { useApp } from '../context/AppContext';
 import {
   filterByContextDistrict,
+  getActiveForecastSummary,
   getContextDistrictName,
   scaleByContext,
 } from '../utils/forecastContextUtils';
@@ -23,13 +24,31 @@ export default function ClinicStaff() {
   const { year, month, district, generated } = forecastContext;
   const { summary, provinces, services, roster } = clinicStaffDetails;
   const contextDistrictName = getContextDistrictName(district);
+  const forecastSummary = getActiveForecastSummary(forecastContext);
+  const burdenFactor =
+    generated && forecastSummary?.predictedCases != null
+      ? Math.max(0.55, Math.min(1.8, forecastSummary.predictedCases / 420))
+      : 1;
 
   const adjustedSummary = generated
     ? {
         ...summary,
-        totalClinics: scaleByContext(summary.totalClinics, year, month, district),
-        nutritionOfficers: scaleByContext(summary.nutritionOfficers, year, month, district),
-        healthcareWorkers: scaleByContext(summary.healthcareWorkers, year, month, district),
+        totalClinics: Math.max(
+          1,
+          Math.round(scaleByContext(summary.totalClinics, year, month, district) * burdenFactor)
+        ),
+        nutritionOfficers: Math.max(
+          1,
+          Math.round(
+            scaleByContext(summary.nutritionOfficers, year, month, district) * burdenFactor
+          )
+        ),
+        healthcareWorkers: Math.max(
+          1,
+          Math.round(
+            scaleByContext(summary.healthcareWorkers, year, month, district) * burdenFactor
+          )
+        ),
         activePrograms: scaleByContext(summary.activePrograms, year, month, district),
         vacancies: scaleByContext(summary.vacancies, year, month, district),
       }

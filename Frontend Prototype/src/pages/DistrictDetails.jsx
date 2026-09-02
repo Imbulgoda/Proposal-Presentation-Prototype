@@ -6,12 +6,14 @@ import ForecastChart from '../components/charts/ForecastChart';
 import SHAPChart from '../components/charts/SHAPChart';
 import ExportToolbar from '../components/export/ExportToolbar';
 import { districts } from '../data/districtData';
-import { generateDistrictForecast, generateForecast } from '../data/forecastData';
+import { generateDistrictForecast, generateForecast, getMonthSeriesForDistrict } from '../data/forecastData';
 import { useApp } from '../context/AppContext';
 import {
   adjustDistrictRecord,
   DISTRICT_ALL,
+  getActiveForecastSummary,
   getContextDistrictName,
+  getForecastAwareDistricts,
   getNationalDistrictProfile,
   isAllDistricts,
   isNationalForecastScope,
@@ -23,6 +25,7 @@ export default function DistrictDetails() {
   const { year, month, district: contextDistrict, generated, model, result } = forecastContext;
   const isNationalScope = isNationalForecastScope(contextDistrict, generated);
   const specificDistrict = getContextDistrictName(contextDistrict);
+  const forecastSummary = getActiveForecastSummary(forecastContext);
 
   const [name, setName] = useState(
     isNationalScope ? DISTRICT_ALL : specificDistrict || 'Badulla'
@@ -41,13 +44,38 @@ export default function DistrictDetails() {
 
   const district = useMemo(() => {
     if (isNationalScope) {
-      return getNationalDistrictProfile(districts, year, month, true);
+      const aware = getForecastAwareDistricts(districts, forecastContext);
+      const profile = getNationalDistrictProfile(aware, year, month, false);
+      if (forecastSummary?.predictedCases != null) {
+        return {
+          ...profile,
+          cases: forecastSummary.predictedCases,
+          risk: forecastSummary.risk || profile.risk,
+          lower: forecastSummary.lower,
+          upper: forecastSummary.upper,
+          uncertainty: forecastSummary.uncertainty,
+          ci: forecastSummary.ci,
+        };
+      }
+      return profile;
     }
+    const aware = getForecastAwareDistricts(districts, forecastContext);
+    const match = aware.find((d) => d.name === name);
+    if (match) return match;
     const baseDistrict = districts.find((d) => d.name === name) || districts[0];
     return generated ? adjustDistrictRecord(baseDistrict, year, month) : baseDistrict;
-  }, [isNationalScope, name, year, month, generated]);
+  }, [isNationalScope, name, year, month, generated, forecastContext, forecastSummary]);
 
   const series = useMemo(() => {
+    if (generated && result?.kind === 'monthly') {
+      const scope = isNationalScope
+        ? DISTRICT_ALL
+        : district.name === DISTRICT_ALL
+          ? DISTRICT_ALL
+          : district.name;
+      const monthly = getMonthSeriesForDistrict(result, scope);
+      if (monthly.length) return monthly;
+    }
     if (isNationalScope && generated) {
       if (result?.series?.length) return result.series;
       return generateForecast({
@@ -62,7 +90,16 @@ export default function DistrictDetails() {
       district.name === DISTRICT_ALL ? 'Badulla' : district.name,
       generated ? year : 2030
     );
-  }, [isNationalScope, generated, result, model, contextDistrict, year, month, district.name]);
+  }, [
+    isNationalScope,
+    generated,
+    result,
+    model,
+    contextDistrict,
+    year,
+    month,
+    district.name,
+  ]);
 
   const drivers = [
     { name: 'Poverty Rate', value: district.povertyRate, color: '#6C5CE7' },

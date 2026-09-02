@@ -9,7 +9,9 @@ import { districts } from '../data/districtData';
 import { useApp } from '../context/AppContext';
 import {
   DISTRICT_ALL,
+  getActiveForecastSummary,
   getContextDistrictName,
+  getDistrictForecastRow,
   getNationalShapProfile,
   isAllDistricts,
   isNationalForecastScope,
@@ -43,16 +45,24 @@ export default function ExplainableAI() {
     }
 
     if (isNationalScope) {
-      return getNationalShapProfile(year, month);
+      const national = getNationalShapProfile(year, month);
+      const summary = getActiveForecastSummary(forecastContext);
+      return {
+        ...national,
+        prediction: summary?.predictedCases ?? national.prediction,
+        risk: summary?.risk || national.risk,
+      };
     }
 
     const baseShap = getShapForDistrict(district);
+    const row = getDistrictForecastRow(forecastContext, district);
     return {
       ...baseShap,
-      prediction: scaleByContext(baseShap.prediction, year, month, district),
+      prediction: row?.predictedCases ?? scaleByContext(baseShap.prediction, year, month, district),
       dmpi: Math.min(99, scaleByContext(baseShap.dmpi, year, month, district)),
+      risk: row?.risk || baseShap.risk,
     };
-  }, [generated, isNationalScope, year, month, district]);
+  }, [generated, isNationalScope, year, month, district, forecastContext]);
 
   const displayDistrict = isNationalScope ? DISTRICT_ALL : district;
   const top = shap.features.slice(0, 2);
