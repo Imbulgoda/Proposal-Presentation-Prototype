@@ -75,24 +75,24 @@ const components = [
     to: '/component/privacy-recalibration',
   },
   {
-  id: 4,
-  active: true,
-  icon: Stethoscope,
-  title: 'Feasible Personalized Counterfactual Intervention',
-  subtitle: 'Child-Level Intervention & Clinical Decision Support',
-  description:
-    'Transforms malnutrition risk predictions and explainable factors into feasible, personalized intervention options for healthcare workers.',
-  capabilities: [
-    'Counterfactual Intervention Generation',
-    'Actionable Risk Factor Analysis',
-    'Sri Lanka-Specific Feasibility Filtering',
-    'Prioritized Intervention Planning',
-    'Personalized Intervention Cards',
-  ],
-  status: 'ACTIVE',
-  action: 'Open Prototype',
-  to: '/component/personalized-nutrition',
-},
+    id: 4,
+    active: true,
+    icon: Stethoscope,
+    title: 'Feasible Personalized Counterfactual Intervention',
+    subtitle: 'Child-Level Intervention & Clinical Decision Support',
+    description:
+      'Transforms malnutrition risk predictions and explainable factors into feasible, personalized intervention options for healthcare workers.',
+    capabilities: [
+      'Counterfactual Intervention Generation',
+      'Actionable Risk Factor Analysis',
+      'Sri Lanka-Specific Feasibility Filtering',
+      'Prioritized Intervention Planning',
+      'Personalized Intervention Cards',
+    ],
+    status: 'ACTIVE',
+    action: 'Open Prototype',
+    to: '/component/personalized-nutrition',
+  },
 ];
 
 const workflow = [
