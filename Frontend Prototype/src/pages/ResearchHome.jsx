@@ -5,11 +5,11 @@ import {
   Brain,
   CheckCircle2,
   Database,
+  Activity,
   LineChart,
   LogOut,
   Map,
   Package,
-  Shield,
   Sparkles,
   Stethoscope,
 } from 'lucide-react';
