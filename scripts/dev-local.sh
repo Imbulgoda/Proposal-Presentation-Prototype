@@ -33,7 +33,7 @@ PYTHONPATH="$ROOT/services/api:$ROOT" "$ROOT/.venv/bin/python" -m app.seed
 cd "$ROOT"
 
 echo "Starting inference :8001, API :8000, client :3000"
-echo "Open http://localhost:3000  (doctor@demo.local / Doc123)"
+echo "Open http://localhost:3000  (doctor@gmail.com / Doc123)"
 cd "$ROOT/client"
 npm install
 npm run dev

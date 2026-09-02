@@ -1,4 +1,5 @@
 import product from "../../packages/contracts/product.json";
+import { HUB_LOGIN_URL } from "./hub-auth";
 
 export const PRODUCT = product;
 
@@ -49,7 +50,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
         /* fall through */
       }
     }
-    if (typeof window !== "undefined") window.location.href = "/login";
+    if (typeof window !== "undefined") window.location.href = HUB_LOGIN_URL;
   }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));

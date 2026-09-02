@@ -125,7 +125,7 @@ Password for all seed users: `Doc123`
 
 | Role | Email | Facility |
 |---|---|---|
-| Doctor (Colombo) | doctor@demo.local | MOH Colombo Demo |
+| Doctor (Colombo) | doctor@gmail.com | MOH Colombo Demo |
 | Doctor (Kandy) | doctor.kandy@demo.local | MOH Kandy Demo |
 
 Only doctor accounts can sign in. Non-doctor seed roles are not created in new installs.

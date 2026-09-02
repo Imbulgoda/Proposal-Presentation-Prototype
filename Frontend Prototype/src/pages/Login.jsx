@@ -3,17 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { Bot, Lock, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useApp } from '../context/AppContext';
+import { loginC1Doctor, storeC1Session } from '../lib/c1Auth';
 
-const roles = ['MOH Officer', 'Nutrition Officer', 'Administrator'];
+const roles = ['MOH Officer', 'Nutrition Officer', 'Administrator', 'Doctor'];
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('MOH Officer');
+  const [submitting, setSubmitting] = useState(false);
   const { login } = useApp();
   const navigate = useNavigate();
+  const isDoctor = role === 'Doctor';
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!username.trim() && !password.trim()) {
       toast.error('Please enter username and password');
@@ -23,6 +26,23 @@ export default function Login() {
       toast.error('Please enter both username and password');
       return;
     }
+
+    if (isDoctor) {
+      setSubmitting(true);
+      try {
+        const session = await loginC1Doctor(username, password);
+        storeC1Session(session.csrf_token);
+        login(username.trim(), role);
+        toast.success(`Welcome, ${session.user?.full_name ?? 'Doctor'}`);
+        navigate('/research-home');
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Clinician login failed');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     login(username.trim(), role);
     toast.success('Welcome to FedNutri-XAI');
     navigate('/research-home');
@@ -48,7 +68,7 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Username / Email
+              {isDoctor ? 'Clinician Email' : 'Username / Email'}
             </label>
             <div className="relative">
               <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -56,7 +76,8 @@ export default function Login() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-surface py-2.5 pl-10 pr-3 text-sm outline-none focus:border-secondary"
-                placeholder="Enter any username or email"
+                placeholder={isDoctor ? 'doctor@gmail.com' : 'Enter any username or email'}
+                autoComplete={isDoctor ? 'username' : 'username'}
               />
             </div>
           </div>
@@ -72,7 +93,8 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-surface py-2.5 pl-10 pr-3 text-sm outline-none focus:border-secondary"
-                placeholder="Enter any password"
+                placeholder={isDoctor ? 'Doc123' : 'Enter any password'}
+                autoComplete={isDoctor ? 'current-password' : 'current-password'}
               />
             </div>
           </div>
@@ -94,9 +116,10 @@ export default function Login() {
 
           <button
             type="submit"
-            className="mt-2 w-full rounded-full bg-gradient-to-r from-secondary to-[#4C6EF5] py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-secondary/25 transition hover:opacity-95"
+            disabled={submitting}
+            className="mt-2 w-full rounded-full bg-gradient-to-r from-secondary to-[#4C6EF5] py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-secondary/25 transition hover:opacity-95 disabled:opacity-70"
           >
-            Login
+            {submitting ? 'Signing in…' : 'Login'}
           </button>
         </form>
       </div>

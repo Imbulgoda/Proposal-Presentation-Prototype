@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, PRODUCT } from "@/lib/api";
+import { HUB_LOGIN_URL } from "@/lib/hub-auth";
 import { formatClinicalDate } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { CommandPalette } from "./command-palette";
@@ -37,7 +38,6 @@ const NAV = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const user = useQuery({ queryKey: ["me"], queryFn: () => api<User>("/auth/me") });
   const notes = useQuery({
@@ -56,7 +56,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   });
   const logout = useMutation({
     mutationFn: () => api("/auth/logout", { method: "POST" }),
-    onSuccess: () => router.push("/login"),
+    onSuccess: () => {
+      window.location.href = HUB_LOGIN_URL;
+    },
   });
 
   useEffect(() => {
@@ -64,8 +66,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (user.isError) router.push("/login");
-  }, [user.isError, router]);
+    if (user.isError) window.location.href = HUB_LOGIN_URL;
+  }, [user.isError]);
 
   return (
     <div className="min-h-screen bg-canvas">

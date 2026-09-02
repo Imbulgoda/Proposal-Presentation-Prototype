@@ -323,6 +323,8 @@ def dashboard(db: Session = Depends(get_db), current=Depends(require_permission(
         child = child_map.get(row.child_id) or db.get(Child, row.child_id)
         author = db.get(User, row.reviewer_user_id)
         parsed = serialize_review(row, author, has_prediction=True)
+        parsed["note_id"] = str(row.id)
+        parsed["child_id"] = str(row.child_id)
         parsed["pseudonymous_id"] = child.pseudonymous_id if child else None
         recent_reviews.append(parsed)
 

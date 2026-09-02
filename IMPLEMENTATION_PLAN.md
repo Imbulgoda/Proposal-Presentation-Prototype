@@ -156,7 +156,7 @@ After each phase: format, lint, typecheck, tests, and fix errors before continui
 
 | Role | Email | Password | Facility |
 |---|---|---|---|
-| Doctor (Colombo) | doctor@demo.local | Doc123 | MOH Colombo Demo |
+| Doctor (Colombo) | doctor@gmail.com | Doc123 | MOH Colombo Demo |
 | Doctor (Kandy) | doctor.kandy@demo.local | Doc123 | MOH Kandy Demo |
 | Doctor (Galle) | doctor.galle@demo.local | Doc123 | MOH Galle Demo |
 

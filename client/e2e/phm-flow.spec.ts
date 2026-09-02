@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 test("Doctor can open the demonstration child", async ({ page }) => {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill("doctor@demo.local");
-  await page.getByLabel("Password").fill("DemoPass123!");
-  await page.getByRole("button", { name: "Sign in" }).click();
+  const login = await page.request.post("http://localhost:8000/auth/login", {
+    data: { email: "doctor@gmail.com", password: "Doc123", remember_me: true },
+  });
+  expect(login.ok()).toBeTruthy();
+  const session = await login.json();
+  await page.goto(`/auth/hub#csrf=${encodeURIComponent(session.csrf_token)}`);
   await expect(page.getByText("Priority actions")).toBeVisible({ timeout: 15000 });
   await page.getByRole("link", { name: "Children" }).click();
   await page.getByPlaceholder("Search child ID").fill("C-1042");

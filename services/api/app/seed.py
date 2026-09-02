@@ -958,7 +958,7 @@ def seed() -> None:
         )
         db.add(policy_row)
 
-        recorder = users["doctor@demo.local"]
+        recorder = users["doctor@gmail.com"]
         enc = FieldEncryptor(get_settings().encryption_key)
         lookup = {}
         for case in CASES:
@@ -986,7 +986,7 @@ def seed_missing_cases() -> None:
             return
 
         facs = {f.code: f for f in db.scalars(select(Facility)).all()}
-        recorder = db.scalar(select(User).where(User.email == "doctor@demo.local"))
+        recorder = db.scalar(select(User).where(User.email == "doctor@gmail.com"))
         model = db.scalar(select(ModelVersion).where(ModelVersion.status == ModelStatus.ACTIVE).limit(1))
         if not recorder or not model:
             print("Cannot add cases — run full seed first.")
@@ -1010,7 +1010,7 @@ def repair_visit_integrity() -> None:
     db = SessionLocal()
     try:
         cases_by_pid = {case["pid"]: case for case in CASES}
-        recorder = db.scalar(select(User).where(User.email == "doctor@demo.local"))
+        recorder = db.scalar(select(User).where(User.email == "doctor@gmail.com"))
         model = db.scalar(select(ModelVersion).where(ModelVersion.status == ModelStatus.ACTIVE).limit(1))
         if not recorder or not model:
             print("Repair skipped — seed data not present")

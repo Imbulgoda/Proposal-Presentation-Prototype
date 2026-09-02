@@ -61,7 +61,7 @@ def enrich() -> None:
     try:
         disabled_users = _disable_non_doctor_users(db)
 
-        recorder = db.scalar(select(User).where(User.email == "doctor@demo.local", User.status == UserStatus.ACTIVE))
+        recorder = db.scalar(select(User).where(User.email == "doctor@gmail.com", User.status == UserStatus.ACTIVE))
         if recorder is None:
             recorder = db.scalar(select(User).where(User.role == UserRole.DOCTOR, User.status == UserStatus.ACTIVE))
         if not recorder:

@@ -18,7 +18,7 @@ if ($conn) {
 
 Write-Host ""
 Write-Host "Starting React frontend (Next.js) at http://localhost:3000"
-Write-Host "Login: doctor@demo.local / Doc123"
+Write-Host "Login: doctor@gmail.com / Doc123"
 Set-Location (Join-Path $Root "client")
 if (-not (Test-Path "node_modules")) {
   npm install
