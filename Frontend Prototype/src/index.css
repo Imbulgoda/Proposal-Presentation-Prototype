@@ -11,6 +11,31 @@
   --font-sans: "Segoe UI", "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0b1f4d;
+  }
+
+  .intervention-plan-print {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .intervention-plan-print section {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  .intervention-card {
+    break-before: page;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

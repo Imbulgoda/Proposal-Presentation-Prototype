@@ -6,6 +6,12 @@ import Login from './pages/Login';
 import ResearchHome from './pages/ResearchHome';
 import TrustworthyXAI from './pages/TrustworthyXAI';
 import PersonalizedNutrition from './pages/PersonalizedNutrition';
+import InterventionDashboard from './pages/InterventionDashboard';
+import ChildIntervention from './pages/ChildIntervention';
+import CounterfactualGeneration from './pages/CounterfactualGeneration';
+import FeasibilityAnalysis from './pages/FeasibilityAnalysis';
+import InterventionRanking from './pages/InterventionRanking';
+import InterventionPlan from './pages/InterventionPlan';
 import PrivacyRecalibration from './pages/PrivacyRecalibration';
 import Dashboard from './pages/Dashboard';
 import Forecast from './pages/Forecast';
@@ -57,6 +63,54 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <PersonalizedNutrition />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/component/personalized-nutrition/dashboard"
+        element={
+          <ProtectedRoute>
+            <InterventionDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/component/personalized-nutrition/child/:childId"
+        element={
+          <ProtectedRoute>
+            <ChildIntervention />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/component/personalized-nutrition/child/:childId/counterfactual"
+        element={
+          <ProtectedRoute>
+            <CounterfactualGeneration />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/component/personalized-nutrition/child/:childId/feasibility"
+        element={
+          <ProtectedRoute>
+            <FeasibilityAnalysis />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/component/personalized-nutrition/child/:childId/ranking"
+        element={
+          <ProtectedRoute>
+            <InterventionRanking />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/component/personalized-nutrition/child/:childId/plan"
+        element={
+          <ProtectedRoute>
+            <InterventionPlan />
           </ProtectedRoute>
         }
       />

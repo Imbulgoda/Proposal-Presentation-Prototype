@@ -1,63 +1,36 @@
 import { FileDown } from 'lucide-react';
-import { jsPDF } from 'jspdf';
 import toast from 'react-hot-toast';
-
-export function buildPdfReport({ title = 'FedNutri-XAI Report', sections = [] }) {
-  const doc = new jsPDF();
-  let y = 20;
-  doc.setFontSize(16);
-  doc.setTextColor(11, 31, 77);
-  doc.text(title, 14, y);
-  y += 8;
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  doc.text(`Generated: ${new Date().toLocaleString()} · Simulated research prototype`, 14, y);
-  y += 12;
-
-  sections.forEach((section) => {
-    if (y > 270) {
-      doc.addPage();
-      y = 20;
-    }
-    doc.setFontSize(12);
-    doc.setTextColor(11, 31, 77);
-    doc.text(section.heading, 14, y);
-    y += 7;
-    doc.setFontSize(10);
-    doc.setTextColor(40);
-    (section.lines || []).forEach((line) => {
-      if (y > 280) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.text(String(line), 14, y);
-      y += 6;
-    });
-    y += 6;
-  });
-
-  return doc;
-}
+import { useState } from 'react';
+import { buildPdfReport } from '../../utils/pdfReport';
 
 export default function PDFExport({
+  title = 'FedNutri-XAI Report',
   label = 'PDF',
+  loadingLabel = 'Generating report...',
   filename = 'FedNutri-XAI-Report.pdf',
   sections = [],
   className = '',
 }) {
+  const [generating, setGenerating] = useState(false);
   const handle = () => {
-    const doc = buildPdfReport({ sections });
-    doc.save(filename);
-    toast.success('PDF report downloaded');
+    if (generating) return;
+    setGenerating(true);
+    window.setTimeout(() => {
+      const doc = buildPdfReport({ title, sections });
+      doc.save(filename);
+      setGenerating(false);
+      toast.success('PDF report downloaded');
+    }, 400);
   };
 
   return (
     <button
       type="button"
       onClick={handle}
+      disabled={generating}
       className={`inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 ${className}`}
     >
-      <FileDown size={14} /> {label}
+      <FileDown size={14} /> {generating ? loadingLabel : label}
     </button>
   );
 }
